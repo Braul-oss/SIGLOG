@@ -127,6 +127,19 @@ Todos bajo el prefijo `/api/v1` (§12.2 del documento técnico).
 | PATCH | `/usuarios/{id}/contrasena` | admin | Restablecer la contraseña |
 | DELETE | `/usuarios/{id}` | admin | Baja lógica |
 | PATCH | `/usuarios/{id}/reactivar` | admin | Reactivar una cuenta |
+| GET | `/clientes` | sesión | Listar (paginado, con búsqueda y filtros) |
+| GET | `/clientes/catalogos` | sesión | Tipos y municipios para los formularios |
+| GET | `/clientes/resumen` | sesión | Conteo por tipo y estado |
+| GET | `/clientes/{id}` | sesión | Detalle |
+| POST | `/clientes` | admin | Crear |
+| PUT | `/clientes/{id}` | admin | Actualizar |
+| DELETE | `/clientes/{id}` | admin | Baja lógica |
+| PATCH | `/clientes/{id}/reactivar` | admin | Reactivar |
+
+En el módulo de clientes el permiso **no es uniforme**: consultar lo puede
+hacer cualquier sesión —el despachador necesita ver clientes para registrar
+entregas y el analista para leer los reportes—, mientras que modificar está
+reservado al administrador (§3).
 
 **Reglas de negocio de la gestión de cuentas.** Existen para que un
 administrador no pueda dejar el sistema sin quien lo administre:
@@ -138,6 +151,15 @@ administrador no pueda dejar el sistema sin quien lo administre:
 | RN-U3 | No se puede desactivar ni degradar al último administrador activo |
 | RN-U4 | El identificador de acceso no se puede cambiar |
 | RN-U5 | El hash de la contraseña nunca sale en una respuesta |
+
+**Reglas del módulo de clientes:**
+
+| Regla | Qué impide |
+|---|---|
+| RN-C1 | El código de cliente lo genera el sistema (CLI-NNN) y es inmutable |
+| RN-C2 | Al menos una dirección y exactamente una marcada como principal |
+| RN-C3 | No se puede dar de baja un cliente que es parada de una ruta activa |
+| RN-C4 | La baja es lógica: el histórico de entregas se conserva |
 
 Los endpoints de salud quedan abiertos a propósito: un monitor externo debe
 poder comprobar que el servicio vive sin tener credenciales.
@@ -208,6 +230,7 @@ python tests/test_conexion.py       # conexión, colecciones e índices
 python tests/test_api.py            # backend base (14 pruebas)
 python tests/test_autenticacion.py  # seguridad y roles (21 pruebas)
 python tests/test_usuarios.py       # gestión de usuarios (28 pruebas)
+python tests/test_clientes.py       # módulo clientes (27 pruebas)
 
 # o con pytest
 pytest tests/ -v
@@ -262,7 +285,8 @@ Frontend → FastAPI → Service → analytics/ · ml/ → MongoDB → respuesta
 | Backend base (API) | Completo |
 | Autenticación y roles (JWT) | Completo |
 | Gestión de usuarios y roles | Completo |
-| Módulos CRUD | Pendiente |
+| Módulo CRUD: clientes | Completo |
+| Módulos CRUD restantes (7) | Pendiente |
 | Endpoints de analítica y ML | Pendiente |
 | Frontend | Pendiente |
 | Reportes PDF | Pendiente |

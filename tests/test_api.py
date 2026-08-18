@@ -86,8 +86,13 @@ def test_info_declara_capacidades():
     assert "autenticacion" in capacidades["modulos_disponibles"]
     assert "autenticacion" not in capacidades["modulos_pendientes"]
     assert capacidades["seguridad"]["metodo"].startswith("JWT")
-    # Los módulos CRUD siguen pendientes
-    assert "clientes" in capacidades["modulos_pendientes"]
+    # Los módulos ya construidos aparecen como disponibles...
+    assert "clientes" in capacidades["modulos_disponibles"]
+    # ...y los que faltan siguen listados como pendientes
+    assert "vehiculos" in capacidades["modulos_pendientes"]
+    assert not (set(capacidades["modulos_disponibles"])
+                & set(capacidades["modulos_pendientes"])), (
+        "un módulo no puede estar a la vez disponible y pendiente")
 
 
 def test_salud_mongodb():

@@ -158,10 +158,23 @@ CATALOGO_TIPOS_INCIDENTE: tuple[str, ...] = (
     "OTRO",
 )
 
+# RNP-07 — Catálogo de tipo de cliente.
+# El documento lo dejó pendiente, pero la simulación ya opera con estos
+# cuatro valores y sobre ellos se construyeron el DW, las gráficas y la
+# variable categórica `tipo_cliente` de los modelos. Declararlos aquí no
+# inventa nada: fija como catálogo lo que el proyecto ya usa, y da al API
+# con qué validar el alta de un cliente.
+CATALOGO_TIPO_CLIENTE: tuple[str, ...] = (
+    "MINORISTA",
+    "MAYORISTA",
+    "INDUSTRIAL",
+    "INSTITUCIONAL",
+)
+
+
 # --------------------------------------------------------------------------
 # REGLAS AÚN PENDIENTES (no se convierten en enum hasta ser aprobadas)
 #   RNP-05  tipo de mantenimiento (PREVENTIVO / CORRECTIVO)
-#   RNP-07  catálogo de tipo de cliente / servicio  → ver database/seed/parametros.py
 #   RNP-13  ventanas horarias comprometidas con el cliente
 #   severidad de incidente: escala pendiente de definir
 # --------------------------------------------------------------------------
