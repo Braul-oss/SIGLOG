@@ -47,7 +47,7 @@ python tests/test_conexion.py
 **Comando oficial**, desde la raíz del proyecto:
 
 ```bash
-python -m backend.main
+uvicorn app:app --reload
 ```
 
 | Recurso | URL |
@@ -57,16 +57,23 @@ python -m backend.main
 | Documentación alternativa (ReDoc) | http://127.0.0.1:8000/redoc |
 | Esquema OpenAPI | http://127.0.0.1:8000/openapi.json |
 
-El punto de entrada es **`backend/main.py`**. Expone `app` (la aplicación
-FastAPI) e `iniciar()` (el arranque con uvicorn), de modo que esta forma
-alternativa es equivalente:
+`app.py` (en la raíz) solo **reexporta** la aplicación; quien la construye
+—con su ciclo de vida, manejadores de error, CORS y routers— es
+**`backend/main.py`**. No hay dos configuraciones que mantener, solo dos
+nombres para la misma aplicación.
+
+Formas equivalentes, todas válidas:
 
 ```bash
-uvicorn backend.main:app --reload
+uvicorn app:app --reload            # la de arriba
+uvicorn backend.main:app --reload   # apunta al módulo que la construye
+python -m backend.main              # usa host/puerto/recarga del .env
+python app.py                       # equivalente a la anterior
 ```
 
-> **Ejecuta siempre desde la raíz del proyecto.** El paquete `backend` se
-> importa como `backend.main`, así que la raíz debe estar en el `PYTHONPATH`.
+> **Ejecuta siempre desde la raíz del proyecto.** Tanto `app` como el
+> paquete `backend` se importan desde ahí, así que la raíz debe estar en el
+> `PYTHONPATH`.
 > Desde otro directorio el arranque falla con `ModuleNotFoundError: No module
 > named 'backend'`; si lo necesitas, exporta `PYTHONPATH=/ruta/a/SIGLOG`.
 
@@ -177,7 +184,7 @@ python -m etl.exploracion
 
 ```bash
 python tests/test_conexion.py       # conexión, colecciones e índices
-python tests/test_api.py            # backend base (13 pruebas)
+python tests/test_api.py            # backend base (14 pruebas)
 python tests/test_autenticacion.py  # seguridad y roles (21 pruebas)
 
 # o con pytest
@@ -193,6 +200,7 @@ automáticas al final de su ejecución.
 
 ```
 SIGLOG/
+├── app.py           Punto de entrada (reexporta backend/main.py)
 ├── config/          Configuración y conexión única a MongoDB
 ├── backend/         API FastAPI (routers, services, repositories, schemas)
 ├── frontend/        Plantillas Jinja2 y estáticos (pendiente)

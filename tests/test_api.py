@@ -248,6 +248,24 @@ def test_todas_las_rutas_bajo_el_prefijo():
     assert not fuera, f"rutas fuera del prefijo {API}: {fuera}"
 
 
+def test_app_raiz_reexporta_la_misma_aplicacion():
+    """
+    `app.py` de la raíz expone la MISMA instancia que backend/main.py.
+
+    Es lo que permite `uvicorn app:app --reload` sin duplicar la
+    configuración: si algún día `app.py` construyera su propia aplicación,
+    esta prueba lo detectaría, porque dejarían de ser el mismo objeto y las
+    dos formas de arranque podrían divergir.
+    """
+    import app as modulo_raiz
+
+    from backend.main import app as aplicacion
+
+    assert modulo_raiz.app is aplicacion, (
+        "app.py debe reexportar la aplicación, no construir una nueva")
+    assert callable(modulo_raiz.iniciar)
+
+
 # ==========================================================================
 # Modo manual (sin pytest)
 # ==========================================================================
@@ -270,6 +288,8 @@ if __name__ == "__main__":
         ("Punto de entrada oficial (app + iniciar)",
          test_punto_de_entrada_oficial),
         ("Todas las rutas bajo /api/v1", test_todas_las_rutas_bajo_el_prefijo),
+        ("app.py reexporta la misma aplicación",
+         test_app_raiz_reexporta_la_misma_aplicacion),
     ]
 
     print("=" * 70)
