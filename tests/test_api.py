@@ -86,13 +86,16 @@ def test_info_declara_capacidades():
     assert "autenticacion" in capacidades["modulos_disponibles"]
     assert "autenticacion" not in capacidades["modulos_pendientes"]
     assert capacidades["seguridad"]["metodo"].startswith("JWT")
-    # Los módulos ya construidos aparecen como disponibles...
-    assert "clientes" in capacidades["modulos_disponibles"]
-    # ...y los que faltan siguen listados como pendientes
-    assert "vehiculos" in capacidades["modulos_pendientes"]
-    assert not (set(capacidades["modulos_disponibles"])
-                & set(capacidades["modulos_pendientes"])), (
+    # Se comprueban INVARIANTES, no nombres concretos: nombrar un módulo
+    # pendiente obligaba a tocar esta prueba cada vez que se construía uno.
+    disponibles = set(capacidades["modulos_disponibles"])
+    pendientes = set(capacidades["modulos_pendientes"])
+
+    assert disponibles, "siempre hay al menos el módulo de sistema"
+    assert not (disponibles & pendientes), (
         "un módulo no puede estar a la vez disponible y pendiente")
+    assert capacidades["seguridad"]["metodo"].startswith("JWT")
+    assert set(capacidades["seguridad"]["roles"]) == set(settings.CATALOGO_ROLES)
 
 
 def test_salud_mongodb():

@@ -172,6 +172,41 @@ CATALOGO_TIPO_CLIENTE: tuple[str, ...] = (
 )
 
 
+# §11.2 — Estado operativo del vehículo.
+# El catálogo está escrito en el propio documento técnico, así que aquí no
+# se decide nada nuevo: se materializa para que el API pueda validarlo.
+ESTADO_DISPONIBLE: str = "DISPONIBLE"
+ESTADO_EN_RUTA: str = "EN_RUTA"
+ESTADO_EN_MANTENIMIENTO: str = "EN_MANTENIMIENTO"
+ESTADO_BAJA: str = "BAJA"
+
+CATALOGO_ESTADO_VEHICULO: tuple[str, ...] = (
+    ESTADO_DISPONIBLE,
+    ESTADO_EN_RUTA,
+    ESTADO_EN_MANTENIMIENTO,
+    ESTADO_BAJA,
+)
+
+# Transiciones permitidas entre estados (RN-V5). Un vehículo no pasa de
+# EN_MANTENIMIENTO a EN_RUTA sin volver antes a DISPONIBLE: el taller lo
+# libera y solo entonces puede salir.
+#
+# BAJA no es destino de ninguna transición a propósito: se alcanza dando de
+# baja el vehículo (DELETE), para que ese camino pase siempre por sus
+# comprobaciones y no se pueda retirar una unidad por la puerta de atrás.
+TRANSICIONES_ESTADO_VEHICULO: dict[str, tuple[str, ...]] = {
+    ESTADO_DISPONIBLE: (ESTADO_EN_RUTA, ESTADO_EN_MANTENIMIENTO),
+    ESTADO_EN_RUTA: (ESTADO_DISPONIBLE, ESTADO_EN_MANTENIMIENTO),
+    ESTADO_EN_MANTENIMIENTO: (ESTADO_DISPONIBLE,),
+    ESTADO_BAJA: (),          # solo se sale reactivando el vehículo
+}
+
+# Supuesto S-03 del documento: tipos de unidad de la flotilla.
+CATALOGO_TIPO_VEHICULO: tuple[str, ...] = ("LIGERO", "MEDIANO", "PESADO")
+
+CATALOGO_TIPO_COMBUSTIBLE: tuple[str, ...] = ("DIESEL", "GASOLINA")
+
+
 # --------------------------------------------------------------------------
 # REGLAS AÚN PENDIENTES (no se convierten en enum hasta ser aprobadas)
 #   RNP-05  tipo de mantenimiento (PREVENTIVO / CORRECTIVO)

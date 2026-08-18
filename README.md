@@ -135,6 +135,17 @@ Todos bajo el prefijo `/api/v1` (§12.2 del documento técnico).
 | PUT | `/clientes/{id}` | admin | Actualizar |
 | DELETE | `/clientes/{id}` | admin | Baja lógica |
 | PATCH | `/clientes/{id}/reactivar` | admin | Reactivar |
+| GET | `/vehiculos` | sesión | Listar (búsqueda y filtros por estado y tipo) |
+| GET | `/vehiculos/catalogos` | sesión | Estados, tipos y transiciones válidas |
+| GET | `/vehiculos/resumen` | sesión | Conteo por estado y tipo |
+| GET | `/vehiculos/{id}` | sesión | Detalle |
+| GET | `/vehiculos/{id}/rendimiento` | sesión | Rendimiento histórico km/l |
+| POST | `/vehiculos` | admin | Dar de alta |
+| PUT | `/vehiculos/{id}` | admin | Actualizar la ficha |
+| PATCH | `/vehiculos/{id}/estado` | admin o despachador | Cambiar el estado operativo |
+| PATCH | `/vehiculos/{id}/ruta` | admin | Asignar o quitar la ruta |
+| DELETE | `/vehiculos/{id}` | admin | Baja lógica |
+| PATCH | `/vehiculos/{id}/reactivar` | admin | Reactivar |
 
 En el módulo de clientes el permiso **no es uniforme**: consultar lo puede
 hacer cualquier sesión —el despachador necesita ver clientes para registrar
@@ -160,6 +171,17 @@ administrador no pueda dejar el sistema sin quien lo administre:
 | RN-C2 | Al menos una dirección y exactamente una marcada como principal |
 | RN-C3 | No se puede dar de baja un cliente que es parada de una ruta activa |
 | RN-C4 | La baja es lógica: el histórico de entregas se conserva |
+
+**Reglas del módulo de vehículos:**
+
+| Regla | Qué impide |
+|---|---|
+| RN-V1 | El código VEH-NNN lo genera el sistema y es inmutable |
+| RN-V2 | La placa es única en la flotilla |
+| RN-V3 | RN-04: un vehículo, una ruta; una ruta, un vehículo |
+| RN-V4 | No se da de baja un vehículo con ruta asignada |
+| RN-V5 | El estado operativo es una máquina de estados, no un campo libre |
+| RN-V6 | El odómetro, el rendimiento real y las fechas de mantenimiento no se editan desde el API: los mantienen la operación y el ETL |
 
 Los endpoints de salud quedan abiertos a propósito: un monitor externo debe
 poder comprobar que el servicio vive sin tener credenciales.
@@ -231,6 +253,7 @@ python tests/test_api.py            # backend base (14 pruebas)
 python tests/test_autenticacion.py  # seguridad y roles (21 pruebas)
 python tests/test_usuarios.py       # gestión de usuarios (28 pruebas)
 python tests/test_clientes.py       # módulo clientes (27 pruebas)
+python tests/test_vehiculos.py      # módulo vehículos (30 pruebas)
 
 # o con pytest
 pytest tests/ -v
@@ -285,8 +308,8 @@ Frontend → FastAPI → Service → analytics/ · ml/ → MongoDB → respuesta
 | Backend base (API) | Completo |
 | Autenticación y roles (JWT) | Completo |
 | Gestión de usuarios y roles | Completo |
-| Módulo CRUD: clientes | Completo |
-| Módulos CRUD restantes (7) | Pendiente |
+| Módulos CRUD: clientes, vehículos | Completo |
+| Módulos CRUD restantes (6) | Pendiente |
 | Endpoints de analítica y ML | Pendiente |
 | Frontend | Pendiente |
 | Reportes PDF | Pendiente |

@@ -46,7 +46,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, RedirectResponse
 from pymongo.errors import PyMongoError
 
-from backend.routers import autenticacion, clientes, sistema, usuarios
+from backend.routers import autenticacion, clientes, sistema, usuarios, vehiculos
 from backend.schemas.comunes import RespuestaError
 from backend.utils import respuestas
 from backend.utils.errores import ErrorSIGLOG
@@ -247,6 +247,7 @@ async def manejar_error_no_previsto(_: Request, exc: Exception) -> JSONResponse:
 app.include_router(autenticacion.router, prefix=settings.API_PREFIJO)
 app.include_router(usuarios.router, prefix=settings.API_PREFIJO)
 app.include_router(clientes.router, prefix=settings.API_PREFIJO)
+app.include_router(vehiculos.router, prefix=settings.API_PREFIJO)
 app.include_router(sistema.router, prefix=settings.API_PREFIJO)
 
 # --------------------------------------------------------------------------
