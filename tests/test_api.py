@@ -186,6 +186,46 @@ def test_no_se_duplica_la_capa_analitica():
 
 
 # ==========================================================================
+# PUNTO DE ENTRADA
+# ==========================================================================
+def test_punto_de_entrada_oficial():
+    """
+    `backend/main.py` es el punto de entrada único y ejecutable.
+
+    Debe exponer `app` (lo que consume `uvicorn backend.main:app`) e
+    `iniciar()` (lo que ejecuta `python -m backend.main`). Que ambas formas
+    salgan del mismo módulo es lo que evita tener dos arranques que se
+    desincronicen.
+    """
+    from backend import main
+
+    assert hasattr(main, "app"), "backend.main debe exponer `app` para uvicorn"
+    assert callable(main.iniciar), "backend.main debe exponer `iniciar()`"
+    assert main.app.title == settings.API_TITULO
+    assert main.app.version == settings.APP_VERSION
+
+
+def test_todas_las_rutas_bajo_el_prefijo():
+    """
+    Toda ruta de la API cuelga de /api/v1 (§12.2).
+
+    Solo quedan fuera la raíz y las páginas de documentación, que por
+    convención viven en el dominio raíz.
+    """
+    from backend.main import app
+
+    # Se consulta el esquema OpenAPI y no `app.routes`: es la superficie
+    # realmente publicada, y su forma no depende de cómo FastAPI represente
+    # internamente los routers incluidos.
+    rutas = app.openapi()["paths"]
+    exentas = {"/", "/docs", "/redoc", "/openapi.json"}
+    fuera = [r for r in rutas if r not in exentas and not r.startswith(API)]
+
+    assert rutas, "el esquema OpenAPI no publica ninguna ruta"
+    assert not fuera, f"rutas fuera del prefijo {API}: {fuera}"
+
+
+# ==========================================================================
 # Modo manual (sin pytest)
 # ==========================================================================
 if __name__ == "__main__":
@@ -204,6 +244,9 @@ if __name__ == "__main__":
         ("CORS con orígenes explícitos", test_cors_no_es_comodin),
         ("El backend no duplica la capa analítica",
          test_no_se_duplica_la_capa_analitica),
+        ("Punto de entrada oficial (app + iniciar)",
+         test_punto_de_entrada_oficial),
+        ("Todas las rutas bajo /api/v1", test_todas_las_rutas_bajo_el_prefijo),
     ]
 
     print("=" * 70)
