@@ -207,6 +207,31 @@ CATALOGO_TIPO_VEHICULO: tuple[str, ...] = ("LIGERO", "MEDIANO", "PESADO")
 CATALOGO_TIPO_COMBUSTIBLE: tuple[str, ...] = ("DIESEL", "GASOLINA")
 
 
+# §11.3 — Operadores.
+ESTADO_OPERADOR_ACTIVO: str = "ACTIVO"
+ESTADO_OPERADOR_INACTIVO: str = "INACTIVO"
+CATALOGO_ESTADO_OPERADOR: tuple[str, ...] = (
+    ESTADO_OPERADOR_ACTIVO,
+    ESTADO_OPERADOR_INACTIVO,
+)
+
+# Tipos de licencia federal de carga. La simulación usa B, C y E; se
+# admite el catálogo completo porque es un documento oficial con tipos
+# fijos, no una clasificación propia del proyecto.
+CATALOGO_TIPO_LICENCIA: tuple[str, ...] = ("A", "B", "C", "D", "E")
+
+# Días de anticipación con que el sistema avisa de una licencia por vencer.
+# Un operador cuya licencia caduca la semana próxima sigue siendo legal
+# hoy, pero programarle rutas del mes que viene es un problema seguro.
+DIAS_AVISO_LICENCIA: int = 30
+
+# RNP-03 resuelta con la opción (b): el operador ROTA de vehículo por
+# jornada, no tiene uno fijo. Por eso `operadores.vehiculo_asignado_id`
+# permanece nulo y el API no ofrece asignarlo: la pareja operador-vehículo
+# se decide en cada viaje, que es donde queda registrada.
+OPERADOR_ROTA_VEHICULO: bool = True
+
+
 # --------------------------------------------------------------------------
 # REGLAS AÚN PENDIENTES (no se convierten en enum hasta ser aprobadas)
 #   RNP-05  tipo de mantenimiento (PREVENTIVO / CORRECTIVO)

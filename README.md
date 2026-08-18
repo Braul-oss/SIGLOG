@@ -146,6 +146,17 @@ Todos bajo el prefijo `/api/v1` (§12.2 del documento técnico).
 | PATCH | `/vehiculos/{id}/ruta` | admin | Asignar o quitar la ruta |
 | DELETE | `/vehiculos/{id}` | admin | Baja lógica |
 | PATCH | `/vehiculos/{id}/reactivar` | admin | Reactivar |
+| GET | `/operadores` | sesión | Listar (filtros por estado y licencia vencida) |
+| GET | `/operadores/catalogos` | sesión | Estados y tipos de licencia |
+| GET | `/operadores/resumen` | sesión | Plantilla y alerta de licencias |
+| GET | `/operadores/licencias` | sesión | Vencidas y por vencer |
+| GET | `/operadores/{id}` | sesión | Detalle |
+| GET | `/operadores/{id}/desempenio` | sesión | Entregas y puntualidad |
+| POST | `/operadores` | admin | Dar de alta |
+| PUT | `/operadores/{id}` | admin | Actualizar ficha o renovar licencia |
+| PATCH | `/operadores/{id}/estado` | admin o despachador | Activar o desactivar |
+| DELETE | `/operadores/{id}` | admin | Baja lógica |
+| PATCH | `/operadores/{id}/reactivar` | admin | Reactivar la ficha |
 
 En el módulo de clientes el permiso **no es uniforme**: consultar lo puede
 hacer cualquier sesión —el despachador necesita ver clientes para registrar
@@ -182,6 +193,23 @@ administrador no pueda dejar el sistema sin quien lo administre:
 | RN-V4 | No se da de baja un vehículo con ruta asignada |
 | RN-V5 | El estado operativo es una máquina de estados, no un campo libre |
 | RN-V6 | El odómetro, el rendimiento real y las fechas de mantenimiento no se editan desde el API: los mantienen la operación y el ETL |
+
+**Reglas del módulo de operadores:**
+
+| Regla | Qué impide |
+|---|---|
+| RN-O1 | El código OPE-NNN lo genera el sistema y es inmutable |
+| RN-O2 | El número de licencia es único |
+| RN-O3 | Un operador con la licencia vencida no puede quedar ACTIVO |
+| RN-O4 | El sistema avisa de las licencias por vencer con antelación |
+| RN-O5 | No se da de baja a quien tiene viajes sin cerrar |
+| RN-O6 | Las entregas y la puntualidad no se editan desde el API |
+
+> **Nota ética (§11.3).** El endpoint `/operadores/{id}/desempenio` incluye en
+> su respuesta la advertencia que pide el documento técnico: estas cifras
+> describen el resultado de las rutas asignadas, no la capacidad personal del
+> operador. El retraso depende sobre todo de la ruta, la franja horaria y los
+> incidentes. Úsense para rediseñar rutas y turnos, no para evaluar personas.
 
 Los endpoints de salud quedan abiertos a propósito: un monitor externo debe
 poder comprobar que el servicio vive sin tener credenciales.
@@ -254,6 +282,7 @@ python tests/test_autenticacion.py  # seguridad y roles (21 pruebas)
 python tests/test_usuarios.py       # gestión de usuarios (28 pruebas)
 python tests/test_clientes.py       # módulo clientes (27 pruebas)
 python tests/test_vehiculos.py      # módulo vehículos (30 pruebas)
+python tests/test_operadores.py     # módulo operadores (29 pruebas)
 
 # o con pytest
 pytest tests/ -v
@@ -308,8 +337,8 @@ Frontend → FastAPI → Service → analytics/ · ml/ → MongoDB → respuesta
 | Backend base (API) | Completo |
 | Autenticación y roles (JWT) | Completo |
 | Gestión de usuarios y roles | Completo |
-| Módulos CRUD: clientes, vehículos | Completo |
-| Módulos CRUD restantes (6) | Pendiente |
+| Módulos CRUD: clientes, vehículos, operadores | Completo |
+| Módulos CRUD restantes (5) | Pendiente |
 | Endpoints de analítica y ML | Pendiente |
 | Frontend | Pendiente |
 | Reportes PDF | Pendiente |
