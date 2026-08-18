@@ -245,6 +245,38 @@ CATALOGO_DIAS_OPERACION: tuple[str, ...] = (
 )
 
 
+# §11.5 — Viajes: la ejecución de una ruta en una fecha.
+ESTATUS_VIAJE_PROGRAMADO: str = "PROGRAMADO"
+ESTATUS_VIAJE_EN_CURSO: str = "EN_CURSO"
+ESTATUS_VIAJE_FINALIZADO: str = "FINALIZADO"
+ESTATUS_VIAJE_CANCELADO: str = "CANCELADO"
+
+CATALOGO_ESTATUS_VIAJE: tuple[str, ...] = (
+    ESTATUS_VIAJE_PROGRAMADO,
+    ESTATUS_VIAJE_EN_CURSO,
+    ESTATUS_VIAJE_FINALIZADO,
+    ESTATUS_VIAJE_CANCELADO,
+)
+
+# Un viaje avanza; nunca retrocede. El §11.5 dice que cada documento ES el
+# histórico y no se sobrescribe: por eso de FINALIZADO y CANCELADO no sale
+# ninguna transición. Corregir un viaje cerrado sería reescribir lo que ya
+# ocurrió, y sobre esos documentos se construyen el DW y los modelos.
+TRANSICIONES_ESTATUS_VIAJE: dict[str, tuple[str, ...]] = {
+    ESTATUS_VIAJE_PROGRAMADO: (ESTATUS_VIAJE_EN_CURSO, ESTATUS_VIAJE_CANCELADO),
+    ESTATUS_VIAJE_EN_CURSO: (ESTATUS_VIAJE_FINALIZADO, ESTATUS_VIAJE_CANCELADO),
+    ESTATUS_VIAJE_FINALIZADO: (),
+    ESTATUS_VIAJE_CANCELADO: (),
+}
+
+# Estatus en los que un viaje sigue "abierto" y ocupa a su vehículo y a su
+# operador. Los usan las comprobaciones de disponibilidad.
+ESTATUS_VIAJE_ABIERTOS: tuple[str, ...] = (
+    ESTATUS_VIAJE_PROGRAMADO,
+    ESTATUS_VIAJE_EN_CURSO,
+)
+
+
 # --------------------------------------------------------------------------
 # REGLAS AÚN PENDIENTES (no se convierten en enum hasta ser aprobadas)
 #   RNP-05  tipo de mantenimiento (PREVENTIVO / CORRECTIVO)
