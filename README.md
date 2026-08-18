@@ -193,6 +193,14 @@ Todos bajo el prefijo `/api/v1` (§12.2 del documento técnico).
 | PUT | `/mantenimientos/{id}` | administrador | Editar mientras no se realice |
 | PATCH | `/mantenimientos/{id}/realizar` | admin o despachador | Registrar el servicio efectuado |
 | PATCH | `/mantenimientos/{id}/vencer` | admin o despachador | Declararlo vencido |
+| GET | `/analitica/kpis` | sesión | Los diez indicadores del dashboard |
+| GET | `/analitica/rutas-mas-usadas` | sesión | Volumen y retraso medio por ruta |
+| GET | `/analitica/causas-retraso` | sesión | Pareto de causas |
+| GET | `/analitica/saturacion-horaria` | sesión | Entregas por franja y día |
+| GET | `/ml/modelos` | sesión | Modelos entrenados y sus métricas |
+| GET | `/ml/clusters-rutas` | sesión | Grupos de rutas (K-Means sobre PCA) |
+| GET | `/ml/entregas-en-riesgo` | sesión | Pendientes ordenadas por riesgo |
+| POST | `/ml/predecir-retraso` | admin o despachador | Predicción para una entrega |
 
 En el módulo de clientes el permiso **no es uniforme**: consultar lo puede
 hacer cualquier sesión —el despachador necesita ver clientes para registrar
@@ -419,6 +427,48 @@ python -m etl.exploracion
 
 ---
 
+## La capa analítica expuesta
+
+Estos ocho endpoints **no reimplementan nada**. `/analitica/kpis` llama a
+`analytics.kpis.calcular()`, que sigue siendo el único lugar donde los diez
+indicadores están definidos; `/ml/*` carga los modelos ya entrenados desde
+`ml/modelos_guardados/` y lee sus fichas de `modelos_ml`. Es la regla de la capa
+8 (§7.3): quien muestra los datos **comunica e interpreta, no recalcula**.
+
+Las tres consultas agregadas del §12.3 sí se resuelven en el servicio, con
+agregaciones de MongoDB, porque no existían como función que devolviera cifras:
+en `analytics/graficas.py` viven dentro de las funciones que dibujan. Para que
+las dos vías no se separen, `tests/test_analitica.py` compara cifra por cifra la
+salida de cada endpoint con lo que la gráfica correspondiente calcula en pandas
+sobre los mismos datos.
+
+**Reglas de la predicción:**
+
+| Regla | Qué impide |
+|---|---|
+| RN-ML1 | No se predice sobre una entrega ya cerrada: su retraso está medido, no estimado |
+| RN-ML2 | El escenario lo decide el estado del viaje, no quien llama |
+| RN-ML3 | El vector se arma con las mismas variables y en el mismo orden con que se entrenó; si falta una, se falla en vez de rellenarla |
+| RN-ML4 | La predicción se guarda en la entrega, y **nunca** toca `hora_estimada_llegada` |
+
+> **RN-ML2 es la continuación de la prevención de fuga de §15.1.** Al entrenar se
+> separaron dos escenarios: PLANEACION usa solo lo conocido al programar el
+> viaje; EN_RUTA añade el retraso de salida y los incidentes. Mientras el viaje
+> no haya salido esos datos no existen, así que pedir EN_RUTA sería inventarlos.
+> Por eso el escenario no es un parámetro de la petición: lo determina el estado
+> del viaje.
+>
+> EN_RUTA predice bastante mejor (ROC-AUC 0.92 contra 0.78, RMSE 9.3 contra
+> 15.0), pero avisa más tarde. PLANEACION es el que deja margen para decidir, y
+> ese margen es justamente lo que hace útil la predicción.
+
+> **RN-ML4 es RN-I5 otra vez.** El retraso se mide contra
+> `hora_estimada_llegada`. Si una predicción la moviera, la entrega parecería
+> puntual por obra del modelo que advirtió lo contrario, y la variable objetivo
+> de los modelos quedaría contaminada por sus propias salidas.
+
+---
+
 ## Pruebas
 
 ```bash
@@ -435,6 +485,8 @@ python tests/test_entregas.py       # módulo entregas (26 pruebas)
 python tests/test_incidentes.py     # módulo incidentes (22 pruebas)
 python tests/test_combustible.py    # módulo combustible (20 pruebas)
 python tests/test_mantenimientos.py # módulo mantenimiento (21 pruebas)
+python tests/test_analitica.py      # endpoints de analítica (11 pruebas)
+python tests/test_ml.py             # endpoints de ML (15 pruebas)
 
 # o con pytest
 pytest tests/ -v
@@ -490,7 +542,7 @@ Frontend → FastAPI → Service → analytics/ · ml/ → MongoDB → respuesta
 | Autenticación y roles (JWT) | Completo |
 | Gestión de usuarios y roles | Completo |
 | Módulos del dominio: clientes, vehículos, operadores, rutas, viajes, entregas, incidentes, combustible, mantenimiento | Completo |
-| Endpoints de analítica y ML | Pendiente |
+| Endpoints de analítica y ML | Completo |
 | Frontend | Pendiente |
 | Reportes PDF | Pendiente |
 

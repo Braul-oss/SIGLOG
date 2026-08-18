@@ -46,9 +46,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, RedirectResponse
 from pymongo.errors import PyMongoError
 
-from backend.routers import (autenticacion, clientes, combustible, entregas,
-                             incidentes, mantenimientos, operadores, rutas,
-                             sistema, usuarios, vehiculos, viajes)
+from backend.routers import (analitica, autenticacion, clientes, combustible,
+                             entregas, incidentes, mantenimientos, ml,
+                             operadores, rutas, sistema, usuarios, vehiculos,
+                             viajes)
 from backend.schemas.comunes import RespuestaError
 from backend.utils import respuestas
 from backend.utils.errores import ErrorSIGLOG
@@ -257,14 +258,18 @@ app.include_router(entregas.router, prefix=settings.API_PREFIJO)
 app.include_router(incidentes.router, prefix=settings.API_PREFIJO)
 app.include_router(combustible.router, prefix=settings.API_PREFIJO)
 app.include_router(mantenimientos.router, prefix=settings.API_PREFIJO)
+app.include_router(analitica.router, prefix=settings.API_PREFIJO)
+app.include_router(ml.router, prefix=settings.API_PREFIJO)
 app.include_router(sistema.router, prefix=settings.API_PREFIJO)
 
 # --------------------------------------------------------------------------
 # PUNTOS DE EXTENSIÓN — actividades posteriores
 # --------------------------------------------------------------------------
-# Los ocho módulos obligatorios del dominio logístico están completos.
-# Quedan pendientes /analitica y /ml, que expondrán la capa analítica ya
-# construida reutilizando analytics/ y ml/, sin duplicar su lógica.
+# Los módulos del dominio y la capa analítica están completos. `analitica`
+# y `ml` no duplican lógica: llaman a analytics/ y a ml/, que siguen siendo
+# el único lugar donde los KPIs se definen y los modelos se entrenan.
+# Quedan pendientes el frontend (Jinja2 + Bootstrap, §8.2) y los reportes
+# PDF.
 
 
 @app.get("/", include_in_schema=False)

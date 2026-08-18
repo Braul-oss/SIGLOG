@@ -134,8 +134,8 @@ def capacidades() -> dict[str, Any]:
                                 "clientes", "vehiculos", "operadores",
                                 "rutas", "viajes", "entregas",
                                 "incidentes", "combustible",
-                                "mantenimientos"],
-        "modulos_pendientes": ["analitica", "ml"],
+                                "mantenimientos", "analitica", "ml"],
+        "modulos_pendientes": [],
         "seguridad": {
             "metodo": "JWT (HS256)",
             "roles": list(settings.CATALOGO_ROLES),
