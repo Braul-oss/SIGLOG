@@ -184,6 +184,9 @@ Todos bajo el prefijo `/api/v1` (§12.2 del documento técnico).
 | POST | `/incidentes` | admin o despachador | Registrar un incidente |
 | POST | `/incidentes/{id}/afectar-entregas` | admin o despachador | Recalcular ETA (RF-33) |
 | PATCH | `/incidentes/{id}/cerrar` | admin o despachador | Cerrar y calcular la duración |
+| GET | `/combustible` · `/catalogos` · `/{id}` | sesión | Consultar cargas |
+| GET | `/combustible/resumen` | sesión | Consumo y costo agregado |
+| POST | `/combustible` | admin o despachador | Registrar una carga |
 
 En el módulo de clientes el permiso **no es uniforme**: consultar lo puede
 hacer cualquier sesión —el despachador necesita ver clientes para registrar
@@ -277,6 +280,19 @@ administrador no pueda dejar el sistema sin quien lo administre:
 | RN-I4 | El recálculo de ETA solo alcanza a las entregas pendientes del viaje |
 | RN-I5 | El recálculo escribe `hora_estimada_recalculada` y **nunca** pisa `hora_estimada_llegada` |
 | RN-I6 | Cada recálculo deja constancia en `seguimiento_eventos` |
+
+**Reglas del módulo de combustible:**
+
+| Regla | Qué impide |
+|---|---|
+| RN-F1 | El folio CMB-AAAAMMDD-NNNN lo genera el sistema |
+| RN-F2 | `costo_total` = litros × precio_por_litro; no se captura |
+| RN-F3 | El tramo sale del odómetro de la carga anterior; en la primera carga queda null, no cero |
+| RN-F4 | `rendimiento_km_l` = km del tramo / litros |
+| RN-F5 | El odómetro no baja respecto de la carga anterior |
+| RN-F6 | Los litros no superan la capacidad del tanque |
+| RN-F7 | El combustible debe ser el de la unidad: no se le pone gasolina a un diésel |
+| RN-F8 | La carga actualiza el odómetro del vehículo |
 
 > **RN-I5 es la regla que protege a los modelos.** El retraso se mide como
 > `real − hora_estimada_llegada`. Si un incidente sobrescribiera esa hora, la
@@ -389,6 +405,7 @@ python tests/test_rutas.py          # módulo rutas (34 pruebas)
 python tests/test_viajes.py         # módulo viajes (26 pruebas)
 python tests/test_entregas.py       # módulo entregas (26 pruebas)
 python tests/test_incidentes.py     # módulo incidentes (22 pruebas)
+python tests/test_combustible.py    # módulo combustible (20 pruebas)
 
 # o con pytest
 pytest tests/ -v
@@ -443,8 +460,8 @@ Frontend → FastAPI → Service → analytics/ · ml/ → MongoDB → respuesta
 | Backend base (API) | Completo |
 | Autenticación y roles (JWT) | Completo |
 | Gestión de usuarios y roles | Completo |
-| Módulos: clientes, vehículos, operadores, rutas, viajes, entregas, incidentes | Completo |
-| Módulos restantes (2): combustible, mantenimiento | Pendiente |
+| Módulos: clientes, vehículos, operadores, rutas, viajes, entregas, incidentes, combustible | Completo |
+| Módulo restante: mantenimiento | Pendiente |
 | Endpoints de analítica y ML | Pendiente |
 | Frontend | Pendiente |
 | Reportes PDF | Pendiente |

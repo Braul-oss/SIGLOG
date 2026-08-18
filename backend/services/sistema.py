@@ -133,9 +133,8 @@ def capacidades() -> dict[str, Any]:
         "modulos_disponibles": ["sistema", "autenticacion", "usuarios",
                                 "clientes", "vehiculos", "operadores",
                                 "rutas", "viajes", "entregas",
-                                "incidentes"],
+                                "incidentes", "combustible"],
         "modulos_pendientes": [
-            "combustible",
             "mantenimientos", "analitica", "ml",
         ],
         "seguridad": {
