@@ -11,12 +11,41 @@
 (function () {
   "use strict";
 
+  const UMBRAL = window.SIGLOG.umbral;
+  const PERIODO = JSON.parse(
+    document.getElementById("datos-periodo").textContent || "{}");
+  const ROTULO = PERIODO.etiqueta || "";
+
+  /** Título de dos líneas: qué se mide y en qué periodo se midió. */
+  function titulo(texto) {
+    return {display: true, text: ROTULO ? [texto, ROTULO] : texto,
+            font: {size: 13}, padding: {bottom: 10}};
+  }
+
+  const ETIQUETA_ORDEN = {
+    volumen: "Rutas por volumen de entregas",
+    retraso: "Rutas por retraso medio",
+    incidencia: "Rutas por proporción de entregas fuera de hora"
+  };
+  const EJE_ORDEN = {
+    volumen: "Entregas realizadas",
+    retraso: "Retraso medio (minutos)",
+    incidencia: "Entregas fuera de hora (%)"
+  };
+  const CAMPO_ORDEN = {
+    volumen: "entregas", retraso: "retraso_medio_min",
+    incidencia: "pct_retrasadas"
+  };
+
   let graficaRutas = null;
 
   async function rutas() {
     const top = document.getElementById("top").value;
+    const orden = document.getElementById("orden").value;
+    const campo = CAMPO_ORDEN[orden];
     try {
-      const r = await SL.api("/analitica/rutas-mas-usadas?top=" + top);
+      const r = await SL.api("/analitica/rutas-mas-usadas?top=" + top +
+                             "&orden=" + orden);
       const filas = r.datos.rutas;
       document.getElementById("l-rutas").textContent = r.datos.lectura;
 
@@ -26,8 +55,8 @@
         data: {
           labels: filas.map(function (f) { return f.codigo_ruta; }),
           datasets: [{
-            label: "Entregas",
-            data: filas.map(function (f) { return f.entregas; }),
+            label: EJE_ORDEN[orden],
+            data: filas.map(function (f) { return f[campo]; }),
             backgroundColor: filas.map(function (f) {
               return f.sobre_umbral ? SL.COLORES.alerta : SL.COLORES.principal;
             })
@@ -35,14 +64,31 @@
         },
         options: {
           plugins: {
+            title: titulo(ETIQUETA_ORDEN[orden]),
             legend: {display: false},
-            tooltip: {callbacks: {afterLabel: function (ctx) {
-              const f = filas[ctx.dataIndex];
-              return ["Retraso medio: " + SL.numero(f.retraso_medio_min) + " min",
-                      "Viajes: " + SL.entero(f.viajes)];
-            }}}
+            tooltip: {callbacks: {
+              title: function (ctx) {
+                const f = filas[ctx[0].dataIndex];
+                return f.codigo_ruta + " · " + (f.nombre_ruta || "");
+              },
+              afterLabel: function (ctx) {
+                const f = filas[ctx.dataIndex];
+                return ["Entregas: " + SL.entero(f.entregas),
+                        "Viajes: " + SL.entero(f.viajes),
+                        "Retraso medio: " +
+                          SL.numero(f.retraso_medio_min) + " min",
+                        "Fuera de hora: " +
+                          SL.numero(f.pct_retrasadas, 0) + "%",
+                        "Distancia: " + SL.numero(f.distancia_km, 1) + " km"];
+              }
+            }}
           },
-          scales: {y: {beginAtZero: true}}
+          scales: {
+            x: {title: {display: true, text: "Ruta"}},
+            y: {beginAtZero: true,
+                title: {display: true, text: EJE_ORDEN[orden]},
+                ticks: {callback: function (v) { return SL.numero(v, 0); }}}
+          }
         }
       });
 
@@ -74,7 +120,9 @@
 
       new Chart(document.getElementById("g-causas"), {
         data: {
-          labels: filas.map(function (f) { return f.causa.replace(/_/g, " "); }),
+          labels: filas.map(function (f) {
+            return f.causa.replace(/_/g, " ").toLowerCase();
+          }),
           datasets: [
             {
               type: "bar", label: "Entregas retrasadas",
@@ -93,10 +141,23 @@
           ]
         },
         options: {
-          plugins: {legend: {position: "bottom", labels: {boxWidth: 12}}},
+          plugins: {
+            title: titulo("Causas del retraso, de mayor a menor frecuencia"),
+            legend: {position: "bottom", labels: {boxWidth: 12}},
+            tooltip: {callbacks: {afterLabel: function (ctx) {
+              const f = filas[ctx.dataIndex];
+              return "Retraso medio de esta causa: " +
+                     SL.numero(f.retraso_medio_min, 1) + " min";
+            }}}
+          },
           scales: {
-            y: {beginAtZero: true, title: {display: true, text: "Entregas"}},
+            x: {title: {display: true, text: "Causa del retraso"},
+                ticks: {maxRotation: 35, font: {size: 10}}},
+            y: {beginAtZero: true,
+                title: {display: true, text: "Entregas retrasadas"},
+                ticks: {callback: function (v) { return SL.entero(v); }}},
             y2: {position: "right", min: 0, max: 105, grid: {display: false},
+                 title: {display: true, text: "Acumulado (%)"},
                  ticks: {callback: function (v) { return v + "%"; }}}
           }
         }
@@ -152,5 +213,6 @@
   }
 
   document.getElementById("top").addEventListener("change", rutas);
+  document.getElementById("orden").addEventListener("change", rutas);
   rutas(); causas(); saturacion();
 })();

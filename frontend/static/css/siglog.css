@@ -354,3 +354,53 @@ body {
   .sl-principal { padding: 1.1rem; }
   .sl-cabecera { flex-direction: column; }
 }
+
+/* =========================================================================
+   BLOQUES DEL PANEL EJECUTIVO
+   Jerarquía numerada: qué pasó, cómo evoluciona, dónde están los problemas
+   y por qué ocurren. El orden es la mitad del mensaje.
+   ========================================================================= */
+.sl-bloque { margin-bottom: 1.8rem; }
+.sl-bloque-cabecera { margin-bottom: .9rem; }
+.sl-bloque-cabecera h2 {
+  font-size: 1.12rem; font-weight: 600; margin: 0;
+  display: flex; align-items: center; gap: .6rem;
+}
+.sl-bloque-cabecera p {
+  margin: .35rem 0 0 2.3rem; font-size: .84rem;
+  color: var(--sl-tinta-suave); max-width: 92ch; line-height: 1.55;
+}
+.sl-paso {
+  width: 1.7rem; height: 1.7rem; flex: 0 0 1.7rem; border-radius: 50%;
+  background: var(--sl-acento); color: #fff;
+  display: grid; place-items: center;
+  font-size: .82rem; font-weight: 700;
+}
+
+.sl-panel h6 {
+  font-size: .9rem; font-weight: 600; margin: 0 0 .5rem;
+  display: flex; align-items: center; gap: .45rem;
+}
+.sl-panel-alerta { border-left: 3px solid var(--bs-warning); }
+
+.sl-kpis-compactos {
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+}
+.sl-kpis-compactos .sl-kpi-valor { font-size: 1.45rem; }
+
+/* Grupos de rutas, explicados en lenguaje de negocio y no como "Cluster 0" */
+.sl-grupo {
+  border: 1px solid var(--sl-borde); border-left: 3px solid var(--sl-acento);
+  border-radius: 8px; padding: .7rem .85rem; margin-bottom: .55rem;
+}
+.sl-grupo-cabecera {
+  display: flex; justify-content: space-between; align-items: center;
+  gap: .5rem; margin-bottom: .3rem; font-size: .86rem;
+}
+.sl-grupo-accion {
+  font-size: .8rem; color: var(--sl-acento); margin: 0; line-height: 1.5;
+}
+.sl-grupo-accion i { font-size: 1rem; vertical-align: -2px; }
+
+/* Las gráficas necesitan aire: un lienzo apretado solapa las etiquetas */
+.sl-panel canvas { margin-top: .4rem; }

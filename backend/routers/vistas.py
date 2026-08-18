@@ -9,9 +9,17 @@ PÁGINAS DE LA INTERFAZ WEB  (§8.2)
     POST /entrar            valida credenciales y abre la sesión
     GET  /salir             cierra la sesión
     GET  /panel             dashboard ejecutivo
+    GET  /flotilla          desempeño de los vehículos
+    GET  /analitica         rutas, causas de retraso y saturación
+    GET  /ml                predicción y agrupamiento
     GET  /modulos/{clave}   pantalla de un módulo del dominio
-    GET  /analitica         consultas agregadas
-    GET  /ml                modelos, agrupamiento y predicción
+
+Control de acceso
+-----------------
+Cada pantalla declara qué roles pueden abrirla —en `backend/vistas/
+catalogo.py`— y **este router lo comprueba**. Ocultar la entrada del menú
+no basta: quien teclee la dirección llega igual hasta aquí, y aquí recibe
+un 403 con una página que explica por qué.
 
 Cómo se reparte el trabajo
 --------------------------
@@ -73,6 +81,7 @@ def _contexto(peticion: Request, usuario: dict | None,
         "usuario": usuario,
         "rol": rol,
         "menu": catalogo.menu(rol),
+        "secciones": catalogo.secciones_visibles(rol),
         "app_nombre": settings.APP_NOMBRE,
         "app_version": settings.APP_VERSION,
         "entorno": settings.APP_ENTORNO,
@@ -86,6 +95,40 @@ def _al_acceso(destino: str = "/") -> RedirectResponse:
     """Sin sesión válida no hay página: al formulario de acceso."""
     return RedirectResponse(url=f"/entrar?destino={destino}",
                             status_code=status.HTTP_303_SEE_OTHER)
+
+
+def _prohibido(peticion: Request, usuario: dict, que: str):
+    """
+    403 como PÁGINA, no como JSON.
+
+    Quien teclea una dirección en el navegador merece una explicación
+    legible de por qué no puede entrar, y un camino de vuelta.
+    """
+    rol = (usuario.get("rol") or "").title()
+    return plantillas.TemplateResponse(
+        request=peticion, name="error.html", context=_contexto(
+            peticion, usuario, codigo=403,
+            titulo_error="Esta pantalla no corresponde a tu perfil",
+            detalle=f"{que} no forma parte de las funciones del rol {rol}. "
+                    "Si necesitas acceso, pídeselo a un administrador."),
+        status_code=status.HTTP_403_FORBIDDEN)
+
+
+def _exigir_seccion(peticion: Request, usuario: dict | None, clave: str,
+                    ruta: str):
+    """
+    Puerta de una pantalla de análisis.
+
+    Devuelve None cuando se puede pasar; si no, la respuesta a devolver. Se
+    comprueba **en el servidor**: ocultar la entrada del menú no impide
+    teclear la dirección.
+    """
+    if not usuario:
+        return _al_acceso(ruta)
+    if not catalogo.puede_ver_seccion(clave, usuario.get("rol")):
+        seccion = catalogo.SECCIONES_POR_CLAVE[clave]
+        return _prohibido(peticion, usuario, f"La pantalla «{seccion.titulo}»")
+    return None
 
 
 # ==========================================================================
@@ -177,8 +220,9 @@ def panel(peticion: Request, bd: BaseDatos, usuario: UsuarioOpcional):
     pintada. Si el data warehouse todavía no se ha cargado, la pantalla lo
     dice y explica qué ejecutar, en vez de quedarse en blanco.
     """
-    if not usuario:
-        return _al_acceso("/panel")
+    veto = _exigir_seccion(peticion, usuario, "panel", "/panel")
+    if veto is not None:
+        return veto
 
     indicadores: list[dict[str, Any]] = []
     resumen = ""
@@ -194,6 +238,7 @@ def panel(peticion: Request, bd: BaseDatos, usuario: UsuarioOpcional):
         request=peticion, name="panel.html", context=
         _contexto(peticion, usuario, indicadores=indicadores,
                   resumen_ejecutivo=resumen, aviso=aviso,
+                  periodo=_periodo_seguro(bd),
                   umbral=settings.UMBRAL_RETRASO_MIN))
 
 
@@ -215,43 +260,90 @@ def modulo(peticion: Request, clave: str, usuario: UsuarioOpcional):
                               f"'{clave}'."),
             status_code=status.HTTP_404_NOT_FOUND)
 
+    # La puerta de verdad. `catalogo.menu()` ya oculta lo que este rol no
+    # puede abrir, pero ocultar no es proteger: quien teclee la dirección
+    # llega igual hasta aquí, y aquí se le para.
     rol = usuario.get("rol")
-    if clave == "usuarios" and rol != settings.ROL_ADMINISTRADOR:
-        return plantillas.TemplateResponse(
-            request=peticion, name="error.html", context=
-            _contexto(peticion, usuario, codigo=403,
-                      titulo_error="Solo para administradores",
-                      detalle="La gestión de cuentas está reservada al rol "
-                              "ADMINISTRADOR."),
-            status_code=status.HTTP_403_FORBIDDEN)
+    if not catalogo.puede_leer(definicion, rol):
+        return _prohibido(peticion, usuario, f"El módulo «{definicion.titulo}»")
 
     return plantillas.TemplateResponse(
         request=peticion, name="modulo.html", context=
         _contexto(peticion, usuario, modulo=definicion,
-                  modulo_json=definicion.a_json(),
+                  # Recortado a lo que este rol puede hacer: lo que no se
+                  # puede usar, no se manda a la página
+                  modulo_json=catalogo.vista_para(definicion, rol),
+                  acciones=catalogo.acciones_permitidas(definicion, rol),
                   puede_escribir=catalogo.puede_escribir(definicion, rol)))
 
 
 # ==========================================================================
 # ANALÍTICA Y ML
 # ==========================================================================
-@router.get("/analitica", response_class=HTMLResponse)
-def analitica(peticion: Request, usuario: UsuarioOpcional):
-    if not usuario:
-        return _al_acceso("/analitica")
+@router.get("/flotilla", response_class=HTMLResponse)
+def flotilla(peticion: Request, bd: BaseDatos, usuario: UsuarioOpcional):
+    """
+    Desempeño de la flotilla.
+
+    Concentra las cuatro preguntas del proyecto que se contestan mirando
+    los vehículos: cuáles cuestan más, cuáles consumen más, cuáles trabajan
+    más y cuáles llegan tarde con más frecuencia. Cada bloque existe por
+    una de esas preguntas, no por rellenar la pantalla.
+    """
+    veto = _exigir_seccion(peticion, usuario, "flotilla", "/flotilla")
+    if veto is not None:
+        return veto
+
+    totales: dict[str, Any] = {}
+    periodo: dict[str, Any] = {}
+    aviso = ""
+    try:
+        datos = servicio_analitica.desempeno_vehiculos(bd, "costo", 1)
+        totales = datos["totales"]
+        periodo = datos["periodo"]
+    except ErrorSIGLOG as error:
+        aviso = error.mensaje
+
     return plantillas.TemplateResponse(
-        request=peticion, name="analitica.html", context=
-        _contexto(peticion, usuario, umbral=settings.UMBRAL_RETRASO_MIN))
+        request=peticion, name="flotilla.html", context=_contexto(
+            peticion, usuario, totales=totales, periodo=periodo, aviso=aviso,
+            umbral=settings.UMBRAL_RETRASO_MIN))
+
+
+@router.get("/analitica", response_class=HTMLResponse)
+def analitica(peticion: Request, bd: BaseDatos, usuario: UsuarioOpcional):
+    veto = _exigir_seccion(peticion, usuario, "analitica", "/analitica")
+    if veto is not None:
+        return veto
+    return plantillas.TemplateResponse(
+        request=peticion, name="analitica.html", context=_contexto(
+            peticion, usuario, umbral=settings.UMBRAL_RETRASO_MIN,
+            periodo=_periodo_seguro(bd)))
 
 
 @router.get("/ml", response_class=HTMLResponse)
-def aprendizaje(peticion: Request, usuario: UsuarioOpcional):
-    if not usuario:
-        return _al_acceso("/ml")
+def aprendizaje(peticion: Request, bd: BaseDatos, usuario: UsuarioOpcional):
+    veto = _exigir_seccion(peticion, usuario, "ml", "/ml")
+    if veto is not None:
+        return veto
     rol = usuario.get("rol")
     return plantillas.TemplateResponse(
-        request=peticion, name="ml.html", context=
-        _contexto(peticion, usuario,
-                  puede_predecir=rol in (settings.ROL_ADMINISTRADOR,
-                                         settings.ROL_DESPACHADOR),
-                  umbral=settings.UMBRAL_RETRASO_MIN))
+        request=peticion, name="ml.html", context=_contexto(
+            peticion, usuario,
+            puede_predecir=rol in (settings.ROL_ADMINISTRADOR,
+                                   settings.ROL_DESPACHADOR),
+            umbral=settings.UMBRAL_RETRASO_MIN,
+            periodo=_periodo_seguro(bd)))
+
+
+def _periodo_seguro(bd) -> dict[str, Any]:
+    """
+    Periodo que cubren los datos, o una etiqueta vacía si aún no hay.
+
+    Una gráfica sin periodo no se puede interpretar, pero que falte el dato
+    tampoco puede tumbar la página.
+    """
+    try:
+        return servicio_analitica.periodo(bd)
+    except Exception:                # noqa: BLE001 — es rotulación, no dato
+        return {"desde": None, "hasta": None, "etiqueta": ""}

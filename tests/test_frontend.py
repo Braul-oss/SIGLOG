@@ -196,7 +196,7 @@ def test_el_destino_no_puede_apuntar_fuera():
 def test_todas_las_paginas_responden():
     c = cliente_http()
     entrar(c)
-    rutas = ["/panel", "/analitica", "/ml"]
+    rutas = [s.ruta for s in catalogo.SECCIONES]
     rutas += [f"/modulos/{m.clave}" for m in catalogo.MODULOS]
     for ruta in rutas:
         respuesta = c.get(ruta)
@@ -307,10 +307,17 @@ def test_cada_modulo_se_describe_completo():
         # Toda columna necesita un formato que el JavaScript sepa aplicar
         formatos = {"texto", "numero", "entero", "dinero", "fecha",
                     "fechahora", "hora", "booleano", "estado", "lista",
-                    "minutos"}
+                    "minutos", "referencia"}
         for columna in datos["columnas"]:
             assert columna["formato"] in formatos, (
                 f"{modulo.clave}: formato '{columna['formato']}' desconocido")
+            # Una columna "referencia" sin recurso enseñaría el identificador
+            # crudo, que es justo lo que ese formato existe para evitar
+            if columna["formato"] == "referencia":
+                assert columna["recurso"], (
+                    f"{modulo.clave}.{columna['campo']}: referencia sin recurso")
+                assert columna["etiqueta_opcion"], (
+                    f"{modulo.clave}.{columna['campo']}: sin campo legible")
         # Y todo campo, un tipo que el formulario sepa construir
         tipos = {"text", "password", "number", "select", "date", "datetime",
                  "time", "textarea", "checkbox", "ref", "objeto", "grupo"}
@@ -349,6 +356,156 @@ def test_los_campos_calculados_no_aparecen_en_los_formularios():
         ", ".join(encontrados))
 
 
+def test_los_formularios_coinciden_con_los_esquemas_del_api():
+    """
+    Cada campo de cada formulario debe existir en el esquema que el API
+    espera para esa operación.
+
+    Es la contraparte de `test_el_catalogo_coincide_con_el_api`, que
+    comprueba las *rutas*. Aquí se comprueban los *campos*: un nombre mal
+    escrito en el catálogo produciría un formulario que parece funcionar
+    —el usuario lo rellena y pulsa guardar— pero cuyo dato el API descarta
+    en silencio, porque Pydantic ignora lo que no conoce. El registro
+    quedaría sin ese cambio y nadie vería un error.
+    """
+    esquema = app.openapi()
+    componentes = esquema.get("components", {}).get("schemas", {})
+
+    def propiedades(ruta: str, metodo: str) -> set[str] | None:
+        """Campos que admite el cuerpo de esa operación, o None si no lleva."""
+        operacion = esquema["paths"].get(ruta, {}).get(metodo)
+        if operacion is None:
+            return None
+        cuerpo = operacion.get("requestBody")
+        if not cuerpo:
+            return set()
+        contenido = cuerpo["content"].get("application/json")
+        if contenido is None:
+            return set()
+        referencia = contenido["schema"].get("$ref", "")
+        if not referencia:
+            return set()
+        modelo = componentes.get(referencia.rsplit("/", 1)[-1], {})
+        return set(modelo.get("properties", {}))
+
+    problemas: list[str] = []
+
+    for modulo in catalogo.MODULOS:
+        # --- alta ---------------------------------------------------------
+        if modulo.campos_alta:
+            admitidos = propiedades(API + modulo.recurso, "post")
+            for campo in modulo.campos_alta:
+                if admitidos and campo.nombre not in admitidos:
+                    problemas.append(
+                        f"{modulo.clave}: el alta ofrece '{campo.nombre}', que "
+                        f"POST {modulo.recurso} no admite "
+                        f"({sorted(admitidos)})")
+
+        # --- edición ------------------------------------------------------
+        if modulo.campos_edicion:
+            ruta = API + modulo.recurso + "/{identificador}"
+            admitidos = propiedades(ruta, "put")
+            assert admitidos is not None, (
+                f"{modulo.clave} declara edición pero no existe PUT {ruta}")
+            for campo in modulo.campos_edicion:
+                if campo.nombre not in admitidos:
+                    problemas.append(
+                        f"{modulo.clave}: la edición ofrece '{campo.nombre}', "
+                        f"que PUT no admite ({sorted(admitidos)})")
+
+        # --- acciones -----------------------------------------------------
+        for accion in modulo.acciones:
+            if not accion.campos:
+                continue
+            destino = (API + accion.ruta[3:] if accion.ruta.startswith("/../")
+                       else API + modulo.recurso +
+                            accion.ruta.replace("{id}", "{identificador}"))
+            admitidos = propiedades(destino, accion.metodo.lower())
+            if not admitidos:
+                continue
+            for campo in accion.campos:
+                if campo.nombre not in admitidos:
+                    problemas.append(
+                        f"{modulo.clave}/{accion.clave}: ofrece "
+                        f"'{campo.nombre}', que {accion.metodo} {destino} "
+                        f"no admite ({sorted(admitidos)})")
+
+    assert not problemas, "\n".join(problemas)
+
+
+def test_cada_accion_de_una_fila_tiene_su_propio_icono():
+    """
+    Con cinco o seis botones en la misma fila, repetir icono obliga a pasar
+    el ratón por todos para saber cuál es cuál.
+    """
+    repetidos = []
+    for modulo in catalogo.MODULOS:
+        iconos = [a.icono for a in modulo.acciones if a.por_fila]
+        # "Ver", "Editar" y "Baja" son fijos y ya tienen los suyos
+        iconos += ["bi-eye", "bi-pencil", "bi-trash"]
+        vistos = set()
+        for icono in iconos:
+            if icono in vistos:
+                repetidos.append(f"{modulo.clave}: {icono} aparece dos veces")
+            vistos.add(icono)
+    assert not repetidos, "\n".join(repetidos)
+
+
+def test_los_catalogos_se_pueden_editar_desde_la_interfaz():
+    """
+    Los cuatro catálogos del caso de estudio necesitan la «U» de CRUD.
+
+    Sin formulario de edición, corregir el teléfono de un cliente o renovar
+    la licencia de un operador solo se podría hacer desde la documentación
+    del API, que no es una interfaz de trabajo.
+    """
+    faltan = []
+    for clave in ("clientes", "vehiculos", "operadores", "rutas"):
+        modulo = catalogo.POR_CLAVE[clave]
+        if not modulo.campos_edicion:
+            faltan.append(f"{clave}: sin formulario de edición")
+        # Y una baja que no se puede deshacer no es una baja lógica
+        if not any(a.clave == "reactivar" for a in modulo.acciones):
+            faltan.append(f"{clave}: sin acción de reactivación")
+    assert not faltan, "\n".join(faltan)
+
+    # Las paradas de una ruta se editan como lista completa
+    rutas = catalogo.POR_CLAVE["rutas"]
+    paradas = next((a for a in rutas.acciones if a.clave == "paradas"), None)
+    assert paradas is not None, "rutas: no se pueden editar las paradas"
+    assert paradas.precargar, (
+        "la edición de paradas debe llegar con las actuales: presentarla "
+        "vacía donde el API espera la lista completa invitaría a borrarlas")
+
+
+def test_la_edicion_no_ofrece_lo_que_el_sistema_calcula():
+    """
+    Un formulario de edición que ofreciera el odómetro o el rendimiento real
+    estaría invitando a escribir a mano justo las cifras que sostienen los
+    KPIs y los modelos.
+    """
+    derivados = {
+        "vehiculos": {"odometro_actual_km", "rendimiento_real_km_l",
+                      "fecha_ultimo_mantenimiento", "fecha_proximo_mantenimiento",
+                      "estado_operativo", "ruta_asignada_id"},
+        "rutas": {"numero_paradas", "distancia_total_km",
+                  "tiempo_estimado_total_min", "velocidad_efectiva_kmh",
+                  "vehiculo_asignado_id"},
+        "operadores": {"antiguedad_meses", "licencia_vigente",
+                       "porcentaje_entregas_a_tiempo", "total_entregas",
+                       "estado"},
+        "clientes": {"codigo_cliente", "total_entregas"},
+    }
+    encontrados = []
+    for clave, prohibidos in derivados.items():
+        for campo in catalogo.POR_CLAVE[clave].campos_edicion:
+            if campo.nombre in prohibidos:
+                encontrados.append(f"{clave}.{campo.nombre}")
+    assert not encontrados, (
+        "la edición ofrece campos que el sistema calcula: " +
+        ", ".join(encontrados))
+
+
 # ==========================================================================
 # ROLES
 # ==========================================================================
@@ -358,23 +515,84 @@ def test_el_analista_no_entra_a_usuarios():
     respuesta = c.get("/modulos/usuarios")
     assert respuesta.status_code == 403
     assert "text/html" in respuesta.headers["content-type"]
+    assert "no corresponde a tu perfil" in respuesta.text
     # Y ni siquiera aparece en el menú: no se ofrece una puerta cerrada
     assert "/modulos/usuarios" not in c.get("/modulos/clientes").text
 
 
-def test_el_analista_ve_las_pantallas_en_modo_consulta():
+def test_el_analista_ve_los_catalogos_en_modo_consulta():
+    """
+    Lo que el analista sí abre, lo abre en solo lectura.
+
+    Los catálogos le dan contexto a los informes —qué ruta es RUT-004, qué
+    vehículo es VEH-014—, así que los ve; pero no puede tocarlos.
+    """
     c = cliente_http()
     entrar(c, "analista")
-    for clave in ("clientes", "viajes", "entregas", "mantenimientos"):
-        html = c.get(f"/modulos/{clave}").text
+    for clave in ("clientes", "vehiculos", "operadores", "rutas"):
+        respuesta = c.get(f"/modulos/{clave}")
+        assert respuesta.status_code == 200, clave
+        html = respuesta.text
         assert 'id="btn-alta"' not in html, clave
         assert "Solo consulta" in html, clave
         assert "SIGLOG.puedeEscribir = false" in html, clave
 
     # Tampoco se le ofrece predecir, que escribe en la entrega
     assert 'id="form-prediccion"' not in c.get("/ml").text
-    # Pero la analítica, que es su razón de ser, sí
-    assert c.get("/analitica").status_code == 200
+    # Pero el análisis, que es su razón de ser, sí
+    for ruta in ("/panel", "/analitica", "/flotilla", "/ml"):
+        assert c.get(ruta).status_code == 200, ruta
+
+
+def test_la_matriz_de_acceso_se_aplica_de_verdad():
+    """
+    La prueba que da sentido a todo el control de acceso.
+
+    Ocultar una entrada del menú no protege nada: quien teclee la dirección
+    llega igual. Aquí se comprueba, pantalla por pantalla y rol por rol,
+    que el servidor responde 403 a lo que ese rol no debería abrir — y 200
+    a lo que sí.
+    """
+    from backend.vistas import catalogo
+
+    sesiones = {}
+    for usuario, rol in (("admin", settings.ROL_ADMINISTRADOR),
+                         ("despachador", settings.ROL_DESPACHADOR),
+                         ("analista", settings.ROL_ANALISTA)):
+        c = cliente_http()
+        entrar(c, usuario)
+        sesiones[rol] = c
+
+    problemas = []
+    for fila in catalogo.matriz_de_acceso():
+        for rol, cliente in sesiones.items():
+            permitido = rol in fila["lectura"]
+            codigo = cliente.get(fila["ruta"]).status_code
+            esperado = 200 if permitido else 403
+            if codigo != esperado:
+                problemas.append(
+                    f"{rol} → {fila['ruta']}: respondió {codigo}, "
+                    f"se esperaba {esperado}")
+    assert not problemas, "\n".join(problemas)
+
+
+def test_el_menu_solo_ofrece_lo_que_se_puede_abrir():
+    """
+    Ninguna entrada del menú puede llevar a un 403.
+
+    Enseñar una puerta cerrada es una mentira de interfaz, y además hace
+    que el usuario dude de si el sistema funciona.
+    """
+    for usuario in ("admin", "despachador", "analista"):
+        c = cliente_http()
+        entrar(c, usuario)
+        html = c.get("/panel").text
+        enlaces = set(re.findall(r'href="(/modulos/[a-z]+|/panel|/flotilla'
+                                 r'|/analitica|/ml)"', html))
+        for enlace in enlaces:
+            assert c.get(enlace).status_code == 200, (
+                f"{usuario}: el menú ofrece {enlace} pero responde "
+                f"{c.get(enlace).status_code}")
 
 
 def test_el_despachador_escribe_donde_le_toca():
@@ -437,9 +655,21 @@ if __name__ == "__main__":
          test_cada_modulo_se_describe_completo),
         ("Los campos calculados no aparecen en los formularios",
          test_los_campos_calculados_no_aparecen_en_los_formularios),
+        ("Los formularios coinciden con los esquemas del API",
+         test_los_formularios_coinciden_con_los_esquemas_del_api),
+        ("Cada acción de una fila tiene su propio icono",
+         test_cada_accion_de_una_fila_tiene_su_propio_icono),
+        ("Los catálogos se pueden editar desde la interfaz",
+         test_los_catalogos_se_pueden_editar_desde_la_interfaz),
+        ("La edición no ofrece lo que el sistema calcula",
+         test_la_edicion_no_ofrece_lo_que_el_sistema_calcula),
         ("El analista no entra a usuarios", test_el_analista_no_entra_a_usuarios),
-        ("El analista ve las pantallas en modo consulta",
-         test_el_analista_ve_las_pantallas_en_modo_consulta),
+        ("El analista ve los catálogos en modo consulta",
+         test_el_analista_ve_los_catalogos_en_modo_consulta),
+        ("La matriz de acceso se aplica de verdad",
+         test_la_matriz_de_acceso_se_aplica_de_verdad),
+        ("El menú solo ofrece lo que se puede abrir",
+         test_el_menu_solo_ofrece_lo_que_se_puede_abrir),
         ("El despachador escribe donde le toca",
          test_el_despachador_escribe_donde_le_toca),
         ("Lo oculto sigue prohibido en el API",

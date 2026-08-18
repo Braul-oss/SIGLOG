@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+{% set seccion = 'flotilla' %}
+{% block titulo %}Flotilla{% endblock %}
+{% block encabezado %}Desempeño de la flotilla{% endblock %}
+{% block subtitulo %}
+  Qué unidades cuestan más, consumen más, trabajan más y llegan tarde con
+  más frecuencia.{% if periodo and periodo.etiqueta %}
+  Periodo analizado: <strong>{{ periodo.etiqueta }}</strong>.{% endif %}
+{% endblock %}
+
+{% block contenido %}
+
+{% if aviso %}
+  <div class="alert alert-warning">
+    <h6 class="alert-heading"><i class="bi bi-exclamation-triangle"></i>
+      El almacén analítico todavía no está listo</h6>
+    <p class="mb-0 small">{{ aviso }}</p>
+  </div>
+{% endif %}
+
+{% if totales %}
+{# ------------------------------------------------------- 1 · el conjunto #}
+<div class="sl-kpis sl-kpis-compactos">
+  <article class="sl-kpi">
+    <header><span class="sl-kpi-titulo">Costo de operación</span></header>
+    <p class="sl-kpi-valor">{{ totales.costo_total | dinero }}</p>
+    <p class="sl-kpi-lectura">Combustible más mantenimiento de toda la
+      flotilla en el periodo.</p>
+  </article>
+  <article class="sl-kpi">
+    <header><span class="sl-kpi-titulo">Combustible</span></header>
+    <p class="sl-kpi-valor">{{ totales.litros | numero(0) }}<small>litros</small></p>
+    <p class="sl-kpi-lectura">{{ totales.costo_combustible | dinero }} en
+      {{ totales.km_recorridos | numero(0) }} km recorridos.</p>
+  </article>
+  <article class="sl-kpi">
+    <header><span class="sl-kpi-titulo">Rendimiento medio</span></header>
+    <p class="sl-kpi-valor">{{ totales.rendimiento_medio_km_l | numero(2) }}<small>km/l</small></p>
+    <p class="sl-kpi-lectura">Promedio real de la flotilla, medido carga a
+      carga por el consumo entre tramos.</p>
+  </article>
+  <article class="sl-kpi">
+    <header><span class="sl-kpi-titulo">Actividad</span></header>
+    <p class="sl-kpi-valor">{{ totales.entregas | entero }}<small>entregas</small></p>
+    <p class="sl-kpi-lectura">En {{ totales.viajes | entero }} viajes.</p>
+  </article>
+  <article class="sl-kpi {{ 'sl-kpi-warning' if totales.en_mantenimiento }}">
+    <header><span class="sl-kpi-titulo">Fuera de operación</span></header>
+    <p class="sl-kpi-valor">{{ totales.en_mantenimiento | entero }}<small>unidades</small></p>
+    <p class="sl-kpi-lectura">En mantenimiento ahora mismo; no pueden
+      programarse en una jornada.</p>
+  </article>
+</div>
+
+{# --------------------------------------------- 2 · las cuatro preguntas #}
+<section class="sl-panel">
+  <header class="sl-panel-cabecera">
+    <h2>¿Qué unidades destacan, y por qué?</h2>
+    <p>Cada criterio responde a una pregunta distinta. El costo total premia
+       a las que trabajan poco, así que conviene mirarlo junto al costo por
+       entrega.</p>
+  </header>
+
+  <div class="sl-controles">
+    <div class="sl-filtro">
+      <label class="form-label" for="criterio">Ordenar por</label>
+      <select class="form-select form-select-sm" id="criterio">
+        <option value="costo">Costo de operación — ¿cuáles cuestan más?</option>
+        <option value="combustible">Combustible — ¿cuáles consumen más?</option>
+        <option value="entregas">Entregas — ¿cuáles trabajan más?</option>
+        <option value="retraso">Retraso — ¿cuáles llegan tarde?</option>
+        <option value="rendimiento">Rendimiento — ¿cuáles gastan de más?</option>
+        <option value="uso">Kilometraje — ¿cuáles se desgastan más?</option>
+      </select>
+    </div>
+    <div class="sl-filtro">
+      <label class="form-label" for="cuantos">Unidades</label>
+      <select class="form-select form-select-sm" id="cuantos">
+        <option value="5">5</option>
+        <option value="10" selected>10</option>
+        <option value="20">Todas</option>
+      </select>
+    </div>
+  </div>
+
+  <canvas id="g-flotilla" height="130"></canvas>
+  <p class="sl-lectura" id="l-flotilla">Cargando…</p>
+</section>
+
+{# ------------------------------------------------- 3 · costo vs trabajo #}
+<section class="sl-panel">
+  <header class="sl-panel-cabecera">
+    <h2>Costo frente a trabajo realizado</h2>
+    <p>Cada punto es una unidad. Hacia la derecha, más entregas; hacia
+       arriba, más costo. Las que quedan <strong>arriba a la izquierda</strong>
+       cuestan mucho para lo poco que mueven: son las primeras a revisar.
+       El tamaño del punto indica los litros consumidos.</p>
+  </header>
+  <canvas id="g-dispersión" height="200"></canvas>
+  <p class="sl-lectura" id="l-dispersion"></p>
+</section>
+
+{# ------------------------------------------------------ 4 · la tabla #}
+<section class="sl-panel">
+  <header class="sl-panel-cabecera">
+    <h2>Detalle por unidad</h2>
+    <p>Las columnas marcadas en rojo señalan lo que se aparta de lo
+       esperado: retraso medio por encima de {{ umbral }} minutos, o
+       rendimiento real por debajo del de ficha.</p>
+  </header>
+  <div class="sl-tabla-envoltura">
+    <table class="table table-hover table-sm sl-tabla">
+      <thead><tr>
+        <th>Vehículo</th>
+        <th>Estado</th>
+        <th class="text-end">Viajes</th>
+        <th class="text-end">Entregas</th>
+        <th class="text-end">Km</th>
+        <th class="text-end">Costo total<br><small>MXN</small></th>
+        <th class="text-end">Costo por entrega<br><small>MXN</small></th>
+        <th class="text-end">Combustible<br><small>litros</small></th>
+        <th class="text-end">Rendimiento<br><small>km/l</small></th>
+        <th class="text-end">Retraso medio<br><small>minutos</small></th>
+        <th class="text-end">Servicios</th>
+      </tr></thead>
+      <tbody id="tabla-flotilla">
+        <tr><td colspan="11" class="sl-cargando">Cargando…</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+{# ------------------------------------------- 5 · qué unidades atender #}
+<section class="sl-panel">
+  <header class="sl-panel-cabecera">
+    <h2>Unidades que requieren mantenimiento</h2>
+    <p>Los servicios vencidos ya sacaron la unidad de operación; los
+       atrasados son los que hay que atender hoy.</p>
+  </header>
+  <div id="mantenimiento" class="sl-cargando">Cargando…</div>
+</section>
+{% endif %}
+
+{% endblock %}
+
+{% block scripts %}
+<script id="datos-periodo" type="application/json">{{ (periodo or {}) | a_json }}</script>
+<script>window.SIGLOG.umbral = {{ umbral }};</script>
+<script src="/static/js/flotilla.js"></script>
+{% endblock %}

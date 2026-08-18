@@ -28,21 +28,30 @@
       </span>
     </a>
 
+    {#
+      Navegación construida a partir de lo que este rol puede abrir. No hay
+      un menú por rol ni plantillas duplicadas: `catalogo.secciones_visibles`
+      y `catalogo.menu` deciden, y el router comprueba lo mismo al servir
+      cada página.
+    #}
     <nav class="sl-nav">
-      <p class="sl-nav-titulo">Análisis</p>
-      <a href="/panel" class="{{ 'activo' if seccion == 'panel' }}">
-        <i class="bi bi-speedometer2"></i> Panel ejecutivo</a>
-      <a href="/analitica" class="{{ 'activo' if seccion == 'analitica' }}">
-        <i class="bi bi-bar-chart-line"></i> Analítica</a>
-      <a href="/ml" class="{{ 'activo' if seccion == 'ml' }}">
-        <i class="bi bi-cpu"></i> Machine Learning</a>
+      {% if secciones %}
+        <p class="sl-nav-titulo">Análisis</p>
+        {% for entrada in secciones %}
+          <a href="{{ entrada.ruta }}" title="{{ entrada.descripcion }}"
+             class="{{ 'activo' if seccion == entrada.clave }}">
+            <i class="bi {{ entrada.icono }}"></i> {{ entrada.titulo }}</a>
+        {% endfor %}
+      {% endif %}
 
-      <p class="sl-nav-titulo">Operación</p>
-      {% for entrada in menu %}
-        <a href="/modulos/{{ entrada.clave }}"
-           class="{{ 'activo' if seccion == entrada.clave }}">
-          <i class="bi {{ entrada.icono }}"></i> {{ entrada.titulo }}</a>
-      {% endfor %}
+      {% if menu %}
+        <p class="sl-nav-titulo">Operación</p>
+        {% for entrada in menu %}
+          <a href="/modulos/{{ entrada.clave }}"
+             class="{{ 'activo' if seccion == entrada.clave }}">
+            <i class="bi {{ entrada.icono }}"></i> {{ entrada.titulo }}</a>
+        {% endfor %}
+      {% endif %}
     </nav>
 
     <div class="sl-lateral-pie">

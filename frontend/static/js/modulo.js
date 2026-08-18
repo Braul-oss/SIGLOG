@@ -20,7 +20,11 @@
   const PUEDE = window.SIGLOG.puedeEscribir;
 
   const estado = {pagina: 1, tamano: 25, total: 0, filas: [], filtros: {}};
-  const cacheRefs = {};              // recurso → [{id, etiqueta}]
+  // Dos cachés distintas sobre los mismos recursos: los desplegables del
+  // formulario necesitan una lista ordenada, y las columnas un índice por
+  // identificador. Compartir la clave haría que una pisara a la otra.
+  const cacheOpciones = {};          // recurso → [{id, texto}]
+  const cacheIndice = {};            // recurso → {id: {etiqueta, detalle}}
 
   const cuerpo = document.getElementById("cuerpo");
   const conteo = document.getElementById("conteo");
@@ -43,10 +47,61 @@
     return p.toString();
   }
 
+  /**
+   * Precarga los catálogos que las columnas de tipo "referencia" necesitan.
+   *
+   * Un identificador interno no le dice nada a nadie: la tabla tiene que
+   * enseñar «VEH-001 · Hino Serie 300». Se piden una vez y se reutilizan
+   * para todas las filas.
+   */
+  async function precargarReferencias() {
+    const pendientes = M.columnas.filter(function (c) {
+      return c.formato === "referencia" && c.recurso && !cacheIndice[c.recurso];
+    });
+    for (const columna of pendientes) {
+      try {
+        const r = await SL.api(columna.recurso + "?pagina=1&tamano=200");
+        const indice = {};
+        (r.datos || []).forEach(function (d) {
+          indice[d.id] = {
+            etiqueta: d[columna.etiqueta_opcion] || d.id,
+            detalle: [d.marca, d.modelo].filter(Boolean).join(" ") ||
+                     d.nombre || d.nombre_completo || "",
+            extra: columna.detalle_opcion ? d[columna.detalle_opcion] : ""
+          };
+        });
+        cacheIndice[columna.recurso] = indice;
+      } catch (error) {
+        cacheIndice[columna.recurso] = {};   // se degrada al identificador
+      }
+    }
+  }
+
+  function celdaReferencia(valor, columna) {
+    if (SL.esVacio(valor)) return "—";
+    const indice = cacheIndice[columna.recurso] || {};
+    const ref = indice[valor];
+    if (!ref) {
+      // El catálogo no lo tiene (dado de baja, o fuera de las 200 primeras).
+      // Se enseña el identificador, pero atenuado y avisando de qué es.
+      return '<small class="text-body-tertiary" title="Identificador ' +
+             'interno; el registro no está en el catálogo activo">' +
+             SL.escapar(String(valor).slice(-6)) + "</small>";
+    }
+    let html = "<strong>" + SL.escapar(ref.etiqueta) + "</strong>";
+    if (ref.detalle) {
+      html += '<br><small class="text-body-secondary">' +
+              SL.escapar(ref.detalle) +
+              (ref.extra ? " · " + SL.escapar(ref.extra) : "") + "</small>";
+    }
+    return html;
+  }
+
   async function cargar() {
     cuerpo.innerHTML = '<tr><td colspan="' + (M.columnas.length + 1) +
                        '" class="sl-cargando">Cargando…</td></tr>';
     try {
+      await precargarReferencias();
       const r = await SL.api(M.recurso + "?" + parametros());
       estado.filas = r.datos || [];
       estado.total = r.total || 0;
@@ -75,12 +130,10 @@
       M.columnas.forEach(function (columna) {
         const td = document.createElement("td");
         const valor = fila[columna.campo];
-        const html = SL.formatear(valor, columna.formato);
-        if (SL.FORMATOS_CON_HTML.indexOf(columna.formato) >= 0) {
-          td.innerHTML = html;
-        } else {
-          td.innerHTML = html;          // `formatear` ya escapó el texto
-        }
+        // `formatear` y `celdaReferencia` escapan lo que insertan
+        td.innerHTML = columna.formato === "referencia"
+          ? celdaReferencia(valor, columna)
+          : SL.formatear(valor, columna.formato);
         if (["numero", "entero", "dinero", "minutos"].indexOf(columna.formato) >= 0) {
           td.className = "sl-num";
         }
@@ -106,6 +159,14 @@
       verDetalle(fila);
     }));
 
+    // Las acciones llegan ya recortadas por el servidor: si están aquí,
+    // este rol puede ejecutarlas, aunque no pueda dar de alta ni editar.
+    (M.acciones || []).forEach(function (accion) {
+      if (!accion.por_fila) return;
+      td.appendChild(boton(accion.etiqueta, accion.icono || "bi-lightning",
+        accion.estilo, function () { ejecutar(accion, fila); }));
+    });
+
     if (!PUEDE) return td;
 
     if (M.campos_edicion && M.campos_edicion.length) {
@@ -122,12 +183,6 @@
         });
       }));
     }
-
-    (M.acciones || []).forEach(function (accion) {
-      if (!accion.por_fila) return;
-      td.appendChild(boton(accion.etiqueta, "bi-lightning", accion.estilo,
-        function () { ejecutar(accion, fila); }));
-    });
 
     if (M.permite_baja) {
       td.appendChild(boton("Baja", "bi-trash", "outline-danger", function () {
@@ -168,28 +223,54 @@
       fila.codigo_vehiculo || fila.codigo_operador || fila.codigo_ruta ||
       fila.usuario || "Detalle";
 
-    const tabla = document.createElement("table");
-    tabla.className = "sl-detalle-tabla";
-    Object.keys(fila).forEach(function (clave) {
-      const tr = document.createElement("tr");
-      const th = document.createElement("th");
-      th.textContent = clave.replace(/_/g, " ");
-      const td = document.createElement("td");
-      const valor = fila[clave];
-      if (valor && typeof valor === "object") {
-        const pre = document.createElement("pre");
-        pre.textContent = JSON.stringify(valor, null, 2);
-        td.appendChild(pre);
-      } else {
-        td.textContent = SL.esVacio(valor) ? "—" : String(valor);
-      }
-      tr.appendChild(th); tr.appendChild(td);
-      tabla.appendChild(tr);
+    // Los identificadores internos no encabezan el detalle: van al final,
+    // plegados. Quien mira una ficha quiere los datos, no las claves
+    // foráneas; el identificador solo hace falta para depurar o para
+    // llamar al API a mano.
+    const esIdentificador = function (clave) {
+      return clave === "id" || /_id$/.test(clave);
+    };
+    const principales = Object.keys(fila).filter(function (k) {
+      return !esIdentificador(k);
     });
+    const identificadores = Object.keys(fila).filter(esIdentificador);
+
+    const construir = function (claves) {
+      const tabla = document.createElement("table");
+      tabla.className = "sl-detalle-tabla";
+      claves.forEach(function (clave) {
+        const tr = document.createElement("tr");
+        const th = document.createElement("th");
+        th.textContent = clave.replace(/_/g, " ");
+        const td = document.createElement("td");
+        const valor = fila[clave];
+        if (valor && typeof valor === "object") {
+          const pre = document.createElement("pre");
+          pre.textContent = JSON.stringify(valor, null, 2);
+          td.appendChild(pre);
+        } else {
+          td.textContent = SL.esVacio(valor) ? "—" : String(valor);
+        }
+        tr.appendChild(th); tr.appendChild(td);
+        tabla.appendChild(tr);
+      });
+      return tabla;
+    };
 
     const contenedor = document.getElementById("detalle-cuerpo");
     contenedor.innerHTML = "";
-    contenedor.appendChild(tabla);
+    contenedor.appendChild(construir(principales));
+
+    if (identificadores.length) {
+      const plegado = document.createElement("details");
+      plegado.className = "mt-3";
+      const resumen = document.createElement("summary");
+      resumen.className = "small text-body-secondary";
+      resumen.textContent = "Identificadores internos";
+      plegado.appendChild(resumen);
+      plegado.appendChild(construir(identificadores));
+      contenedor.appendChild(plegado);
+    }
     modalDetalle.show();
   }
 
@@ -289,6 +370,14 @@
 
     if (valor !== undefined && valor !== null) {
       if (campo.tipo === "checkbox") control.checked = !!valor;
+      else if (campo.tipo === "ref") {
+        // Un desplegable de referencia todavía no tiene opciones: se
+        // rellenan después, contra el API. Asignarle el valor ahora no
+        // haría nada, así que se guarda y `cargarReferencias` lo restaura
+        // cuando las opciones ya existen. Sin esto, editar un registro
+        // perdería en silencio la ruta o el vehículo ya elegidos.
+        control.dataset.valor = valor;
+      }
       else if (campo.tipo === "date" && typeof valor === "string")
         control.value = valor.slice(0, 10);
       else if (campo.tipo === "datetime" && typeof valor === "string")
@@ -391,9 +480,9 @@
       const etiqueta = select.dataset.etiqueta;
       const valorPrevio = select.dataset.valor || "";
       try {
-        if (!cacheRefs[recurso]) {
+        if (!cacheOpciones[recurso]) {
           const r = await SL.api(recurso + "?pagina=1&tamano=200");
-          cacheRefs[recurso] = (r.datos || []).map(function (d) {
+          cacheOpciones[recurso] = (r.datos || []).map(function (d) {
             return {
               id: d.id,
               texto: (d[etiqueta] || d.id) +
@@ -403,7 +492,7 @@
             };
           });
         }
-        const opciones = cacheRefs[recurso];
+        const opciones = cacheOpciones[recurso];
         select.innerHTML = "";
         select.appendChild(new Option(
           select.hasAttribute("required") ? "— elegir —" : "— ninguno —", ""));
@@ -531,7 +620,10 @@
       titulo: accion.etiqueta + (fila ? " · " + etiquetaDe(fila) : ""),
       descripcion: accion.descripcion,
       campos: accion.campos,
-      valores: {},
+      // Las acciones que REEMPLAZAN una lista llegan con la lista actual.
+      // Presentarla vacía donde el servicio espera la completa invitaría a
+      // borrar sin querer todo lo que había.
+      valores: (accion.precargar && fila) ? fila : {},
       enviar: function (datos) {
         return SL.api(rutaAccion(accion, fila), {
           method: accion.metodo,

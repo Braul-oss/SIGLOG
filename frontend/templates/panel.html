@@ -3,13 +3,16 @@
 {% block titulo %}Panel ejecutivo{% endblock %}
 {% block encabezado %}Panel ejecutivo{% endblock %}
 {% block subtitulo %}
-  Los diez indicadores del Panel A. Cada uno viene con su lectura: un número
-  sin contexto no dice si es bueno.
+  Qué está pasando en la operación, dónde están los problemas y qué exige
+  una decisión.{% if periodo and periodo.etiqueta %}
+  Periodo analizado: <strong>{{ periodo.etiqueta }}</strong>.{% endif %}
 {% endblock %}
 
 {% block acciones_cabecera %}
+  <a href="/flotilla" class="btn btn-sm btn-outline-primary">
+    <i class="bi bi-truck-front"></i> Flotilla</a>
   <a href="/analitica" class="btn btn-sm btn-outline-primary">
-    <i class="bi bi-bar-chart-line"></i> Ver analítica</a>
+    <i class="bi bi-bar-chart-line"></i> Rutas y retrasos</a>
 {% endblock %}
 
 {% block contenido %}
@@ -17,11 +20,12 @@
 {% if aviso %}
   <div class="alert alert-warning">
     <h6 class="alert-heading"><i class="bi bi-exclamation-triangle"></i>
-      La capa analítica todavía no está lista</h6>
+      El análisis todavía no está disponible</h6>
     <p class="mb-2 small">{{ aviso }}</p>
     <p class="mb-0 small text-body-secondary">
-      Los indicadores salen del data warehouse. Mientras no se haya cargado no
-      hay nada que resumir — y mostrar ceros sería peor que no mostrar nada.
+      Los indicadores se calculan sobre el histórico consolidado. Mientras no
+      se haya procesado no hay nada que resumir, y mostrar ceros sería peor
+      que no mostrar nada.
     </p>
   </div>
 {% endif %}
@@ -30,73 +34,125 @@
   <div class="sl-resumen">
     <div class="sl-resumen-icono"><i class="bi bi-lightbulb"></i></div>
     <div>
-      <h6>Resumen ejecutivo</h6>
+      <h6>En resumen</h6>
       <p>{{ resumen_ejecutivo }}</p>
     </div>
   </div>
 {% endif %}
 
-<div class="sl-kpis">
-  {% for kpi in indicadores %}
-  <article class="sl-kpi sl-kpi-{{ kpi.semaforo | color_semaforo }}">
-    <header>
-      <span class="sl-kpi-titulo">{{ kpi.titulo }}</span>
-      <span class="badge text-bg-{{ kpi.semaforo | color_semaforo }}">
-        {{ kpi.semaforo | title }}</span>
-    </header>
-    <p class="sl-kpi-valor">
-      {%- if kpi.unidad in ('pesos', '$') -%}{{ kpi.valor | dinero }}
-      {%- elif kpi.valor is number and kpi.valor == kpi.valor | round -%}
-        {{ kpi.valor | entero }}
-      {%- else -%}{{ kpi.valor | numero }}{%- endif -%}
-      <small>{{ kpi.unidad }}</small>
-    </p>
-    <p class="sl-kpi-lectura">{{ kpi.lectura }}</p>
-  </article>
-  {% endfor %}
-</div>
-
 {% if indicadores %}
-<section class="sl-panel">
-  <header class="sl-panel-cabecera">
-    <h2>Dónde se concentra el retraso</h2>
-    <p>Las mismas cifras que sostienen el dashboard, vistas por ruta y por
-       causa. Salen de los endpoints de analítica, no de un cálculo aparte.</p>
-  </header>
-  <div class="sl-rejilla-2">
-    <figure class="sl-grafica">
-      <figcaption>Rutas de mayor volumen</figcaption>
-      <canvas id="g-rutas" height="220"></canvas>
-      <p class="sl-lectura" id="l-rutas">Cargando…</p>
-    </figure>
-    <figure class="sl-grafica">
-      <figcaption>Pareto de causas</figcaption>
-      <canvas id="g-causas" height="220"></canvas>
-      <p class="sl-lectura" id="l-causas">Cargando…</p>
-    </figure>
+
+{# =========================================================== 1 · CIFRAS #}
+<section class="sl-bloque">
+  <div class="sl-bloque-cabecera">
+    <h2><span class="sl-paso">1</span> Las cifras del periodo</h2>
+    <p>Cada tarjeta lleva su lectura: un número solo no dice si es bueno.
+       El color compara contra la meta — verde la cumple, ámbar se queda
+       cerca, rojo se aleja, gris no se juzga contra ninguna.</p>
+  </div>
+
+  <div class="sl-kpis">
+    {% for kpi in indicadores %}
+    <article class="sl-kpi sl-kpi-{{ kpi.semaforo | color_semaforo }}">
+      <header>
+        <span class="sl-kpi-titulo">{{ kpi.titulo }}</span>
+        <span class="badge text-bg-{{ kpi.semaforo | color_semaforo }}">
+          {{ kpi.semaforo | title }}</span>
+      </header>
+      <p class="sl-kpi-valor">
+        {%- if kpi.unidad in ('MXN', 'MXN/km') -%}{{ kpi.valor | dinero }}
+        {%- elif kpi.valor is number and kpi.valor == kpi.valor | round -%}
+          {{ kpi.valor | entero }}
+        {%- else -%}{{ kpi.valor | numero }}{%- endif -%}
+        <small>{{ kpi.unidad }}</small>
+      </p>
+      <p class="sl-kpi-lectura">{{ kpi.lectura }}</p>
+    </article>
+    {% endfor %}
   </div>
 </section>
 
-<section class="sl-panel">
-  <header class="sl-panel-cabecera">
-    <h2>Alertas operativas</h2>
-    <p>Lo que exige una decisión hoy.</p>
-  </header>
+{# ======================================================= 2 · TENDENCIA #}
+<section class="sl-bloque">
+  <div class="sl-bloque-cabecera">
+    <h2><span class="sl-paso">2</span> Cómo evoluciona</h2>
+    <p>Una cifra del periodo no dice si la situación mejora o empeora.
+       Aquí se ve el movimiento semana a semana.</p>
+  </div>
+  <div class="sl-panel">
+    <canvas id="g-tendencia" height="110"></canvas>
+    <p class="sl-lectura" id="l-tendencia">Cargando…</p>
+  </div>
+</section>
+
+{# ======================================================= 3 · PROBLEMAS #}
+<section class="sl-bloque">
+  <div class="sl-bloque-cabecera">
+    <h2><span class="sl-paso">3</span> Dónde están los problemas</h2>
+    <p>Lo que exige una decisión hoy, ordenado por urgencia.</p>
+  </div>
+
   <div class="sl-rejilla-2">
-    <div class="sl-tarjeta" id="t-mantenimiento">
-      <h6><i class="bi bi-tools"></i> Mantenimiento pendiente</h6>
+    <div class="sl-panel sl-panel-alerta" id="t-mantenimiento">
+      <h6><i class="bi bi-tools"></i> Unidades fuera de operación</h6>
       <div class="sl-cargando">Cargando…</div>
     </div>
-    <div class="sl-tarjeta" id="t-riesgo">
-      <h6><i class="bi bi-cpu"></i> Entregas en riesgo</h6>
+    <div class="sl-panel sl-panel-alerta" id="t-riesgo">
+      <h6><i class="bi bi-clock-history"></i> Entregas con riesgo de llegar tarde</h6>
       <div class="sl-cargando">Cargando…</div>
     </div>
   </div>
+
+  <div class="sl-rejilla-2">
+    <div class="sl-panel">
+      <h6><i class="bi bi-signpost-split"></i> Rutas con mayor retraso</h6>
+      <p class="sl-ayuda">Las que más se desvían de su hora prometida.
+         Se excluyen las de menos de 50 entregas: el promedio de una muestra
+         pequeña es ruido.</p>
+      <canvas id="g-rutas-retraso" height="200"></canvas>
+      <p class="sl-lectura" id="l-rutas-retraso">Cargando…</p>
+    </div>
+    <div class="sl-panel">
+      <h6><i class="bi bi-truck-front"></i> Unidades de mayor costo</h6>
+      <p class="sl-ayuda">Combustible más mantenimiento. Una unidad cara no
+         es un problema si trabaja mucho: el detalle está en Flotilla.</p>
+      <canvas id="g-vehiculos-costo" height="200"></canvas>
+      <p class="sl-lectura" id="l-vehiculos-costo">Cargando…</p>
+    </div>
+  </div>
 </section>
+
+{# ======================================================== 4 · ANÁLISIS #}
+<section class="sl-bloque">
+  <div class="sl-bloque-cabecera">
+    <h2><span class="sl-paso">4</span> Por qué ocurre</h2>
+    <p>De los síntomas a las causas.</p>
+  </div>
+
+  <div class="sl-rejilla-2">
+    <div class="sl-panel">
+      <h6><i class="bi bi-bar-chart-steps"></i> Causas del retraso</h6>
+      <p class="sl-ayuda">Las barras rojas son las pocas causas que explican
+         la mayor parte del problema. Atacarlas rinde más que repartir el
+         esfuerzo entre todas.</p>
+      <canvas id="g-causas" height="200"></canvas>
+      <p class="sl-lectura" id="l-causas">Cargando…</p>
+    </div>
+    <div class="sl-panel">
+      <h6><i class="bi bi-diagram-3"></i> Tipos de ruta</h6>
+      <p class="sl-ayuda">Las rutas agrupadas por comportamiento parecido.
+         Cada grupo lleva la recomendación que le corresponde.</p>
+      <div id="grupos-rutas" class="sl-cargando">Cargando…</div>
+    </div>
+  </div>
+</section>
+
 {% endif %}
 
 {% endblock %}
 
 {% block scripts %}
+<script id="datos-periodo" type="application/json">{{ (periodo or {}) | a_json }}</script>
+<script>window.SIGLOG.umbral = {{ umbral }};</script>
 <script src="/static/js/panel.js"></script>
 {% endblock %}

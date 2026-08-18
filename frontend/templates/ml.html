@@ -1,9 +1,11 @@
 {% extends "base.html" %}
 {% set seccion = 'ml' %}
 {% block titulo %}Machine Learning{% endblock %}
-{% block encabezado %}Machine Learning{% endblock %}
+{% block encabezado %}Predicción de retrasos{% endblock %}
 {% block subtitulo %}
-  Los modelos entrenados con el histórico, aplicados a la operación de hoy.
+  Qué entregas van a llegar tarde, y qué rutas se comportan de forma
+  parecida.{% if periodo and periodo.etiqueta %} Los modelos aprendieron del
+  histórico de <strong>{{ periodo.etiqueta | lower }}</strong>.{% endif %}
 {% endblock %}
 
 {% block contenido %}
@@ -11,9 +13,10 @@
 <section class="sl-panel">
   <header class="sl-panel-cabecera">
     <h2>Modelos vigentes</h2>
-    <p>La ficha con la que cada modelo se aprobó: algoritmo, escenario,
-       métricas de prueba y semilla. No se recalcula al abrir esta pantalla —
-       se lee de <code>modelos_ml</code>, tal como quedó al entrenar.</p>
+    <p>Los modelos aprendieron del histórico de entregas y son los que
+       responden si una entrega va a llegar tarde. Aquí se ve con qué acierto
+       se aprobó cada uno; las cifras son las de su evaluación y no se
+       recalculan al abrir la pantalla.</p>
   </header>
   <div id="modelos" class="sl-cargando">Cargando…</div>
   <p class="sl-lectura" id="l-modelos"></p>
@@ -76,6 +79,8 @@
 {% endblock %}
 
 {% block scripts %}
-<script>window.SIGLOG.puedePredecir = {{ 'true' if puede_predecir else 'false' }};</script>
+<script id="datos-periodo" type="application/json">{{ (periodo or {}) | a_json }}</script>
+<script>window.SIGLOG.umbral = {{ umbral }};
+window.SIGLOG.puedePredecir = {{ 'true' if puede_predecir else 'false' }};</script>
 <script src="/static/js/ml.js"></script>
 {% endblock %}

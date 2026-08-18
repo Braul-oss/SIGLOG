@@ -88,10 +88,27 @@ La documentación interactiva del API sigue en `/docs`.
 
 | Pantalla | Qué muestra |
 |---|---|
-| `/panel` | Los diez indicadores del Panel A, con su lectura, más las alertas de mantenimiento y de entregas en riesgo |
-| `/modulos/<clave>` | Los diez módulos del dominio: tabla con filtros, alta, edición y las acciones propias de cada uno |
-| `/analitica` | Rutas más usadas, Pareto de causas y mapa de saturación |
-| `/ml` | Modelos vigentes, entregas en riesgo, predicción y agrupamiento de rutas |
+| `/panel` | Panel ejecutivo en cuatro bloques: **las cifras**, **cómo evolucionan**, **dónde están los problemas** y **por qué ocurren** |
+| `/flotilla` | Desempeño de los vehículos: costo, combustible, entregas, retraso, rendimiento y mantenimiento |
+| `/analitica` | Rutas por volumen, retraso o incidencia; Pareto de causas; mapa de saturación |
+| `/ml` | Predicción de retrasos, entregas en riesgo y agrupamiento de rutas |
+| `/modulos/<clave>` | Los diez módulos del dominio: tabla con filtros, alta, **edición**, baja lógica, **reactivación** y las acciones propias de cada uno |
+
+**Matriz de acceso.** Cada pantalla declara qué roles pueden abrirla, y el
+router lo comprueba:
+
+| Pantalla | ADMINISTRADOR | DESPACHADOR | ANALISTA |
+|---|:---:|:---:|:---:|
+| Panel, Flotilla, Rutas y retrasos, Predicción | ✓ | ✓ | ✓ |
+| Clientes, Vehículos, Operadores, Rutas | ✏️ | 👁 | 👁 |
+| Viajes, Entregas, Incidentes, Combustible | ✏️ | ✏️ | — |
+| Mantenimiento | ✏️ | 👁 | — |
+| Usuarios | ✏️ | — | — |
+
+✏️ escribe · 👁 solo consulta · — no la ve
+
+Cambiar quién ve qué es cambiar una tupla en `backend/vistas/catalogo.py`; no
+hay un menú por rol ni plantillas duplicadas.
 
 **Jinja2 + Bootstrap, sin build** (§8.2). No hay Node, ni npm, ni framework
 JS: Bootstrap y Chart.js llegan por CDN y lo propio son una hoja de estilo y
@@ -119,11 +136,25 @@ puede leerla, de modo que un XSS no podría llevarse la sesión— y
 autentica por cookie. Si llega la cabecera `Authorization`, manda ella: quien
 la envía explícitamente está eligiendo con qué identidad actuar.
 
-**Ocultar un botón no es un permiso.** La interfaz esconde lo que un rol no
-podría usar —enseñar un botón que siempre responderá 403 es una mentira—,
-pero quien autoriza sigue siendo `requiere_rol` en el router, y lo hace
-aunque alguien fabrique la petición a mano. `tests/test_frontend.py` lo
-comprueba en los dos sentidos.
+**Qué se edita y qué no.** Los cuatro catálogos —clientes, vehículos,
+operadores y rutas— tienen formulario de edición y reactivación. Viajes,
+entregas, incidentes y combustible **no**, y no es un olvido: son hechos
+ocurridos, y el API tampoco expone `PUT` para ellos. Corregir una carga de
+combustible a posteriori cambiaría el rendimiento de dos tramos.
+
+Dentro de la edición tampoco aparece lo que el sistema calcula: el odómetro y
+el rendimiento real de un vehículo los mueven las cargas y los viajes; la
+distancia, el tiempo y la velocidad de una ruta salen de sus paradas. Las
+paradas se editan como lista completa, con la actual precargada.
+
+**Ocultar no es proteger.** Hay dos niveles y conviene no confundirlos:
+`roles_lectura` decide quién puede **abrir** una pantalla, y lo comprueba el
+router —quien teclee la dirección recibe un 403 con una página que se lo
+explica—; `roles_escritura` solo **oculta botones**, porque quien autoriza la
+escritura de verdad es `requiere_rol` en el router del API, y lo hace aunque
+alguien fabrique la petición con curl. `tests/test_frontend.py` recorre la
+matriz completa, rol por rol y pantalla por pantalla, y comprueba además que
+ninguna entrada del menú lleve a un 403.
 
 ### Primer usuario
 
@@ -239,7 +270,10 @@ Todos bajo el prefijo `/api/v1` (§12.2 del documento técnico).
 | PATCH | `/mantenimientos/{id}/realizar` | admin o despachador | Registrar el servicio efectuado |
 | PATCH | `/mantenimientos/{id}/vencer` | admin o despachador | Declararlo vencido |
 | GET | `/analitica/kpis` | sesión | Los diez indicadores del dashboard |
-| GET | `/analitica/rutas-mas-usadas` | sesión | Volumen y retraso medio por ruta |
+| GET | `/analitica/rutas-mas-usadas` | sesión | Rutas por volumen, retraso o incidencia |
+| GET | `/analitica/vehiculos` | sesión | Desempeño de la flotilla (costo, combustible, entregas, retraso) |
+| GET | `/analitica/operadores` | sesión | Entregas y puntualidad por operador |
+| GET | `/analitica/tendencia` | sesión | Evolución semanal o mensual |
 | GET | `/analitica/causas-retraso` | sesión | Pareto de causas |
 | GET | `/analitica/saturacion-horaria` | sesión | Entregas por franja y día |
 | GET | `/ml/modelos` | sesión | Modelos entrenados y sus métricas |
@@ -530,9 +564,9 @@ python tests/test_entregas.py       # módulo entregas (26 pruebas)
 python tests/test_incidentes.py     # módulo incidentes (22 pruebas)
 python tests/test_combustible.py    # módulo combustible (20 pruebas)
 python tests/test_mantenimientos.py # módulo mantenimiento (21 pruebas)
-python tests/test_analitica.py      # endpoints de analítica (11 pruebas)
+python tests/test_analitica.py      # endpoints de analítica (22 pruebas)
 python tests/test_ml.py             # endpoints de ML (15 pruebas)
-python tests/test_frontend.py       # interfaz web (19 pruebas)
+python tests/test_frontend.py       # interfaz web (25 pruebas)
 
 # o con pytest
 pytest tests/ -v

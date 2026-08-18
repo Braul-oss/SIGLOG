@@ -5,17 +5,21 @@
 {% block subtitulo %}{{ modulo.descripcion }}{% endblock %}
 
 {% block acciones_cabecera %}
-  {% if puede_escribir %}
-    {% for accion in modulo.acciones if not accion.por_fila %}
-      <button class="btn btn-sm btn-{{ accion.estilo }}"
-              data-accion-global="{{ accion.clave }}">
-        <i class="bi bi-lightning-charge"></i> {{ accion.etiqueta }}</button>
-    {% endfor %}
-    {% if modulo.campos_alta %}
-      <button class="btn btn-sm btn-primary" id="btn-alta">
-        <i class="bi bi-plus-lg"></i> {{ modulo.etiqueta_alta }}</button>
-    {% endif %}
-  {% else %}
+  {% for accion in acciones if not accion.por_fila %}
+    <button class="btn btn-sm btn-{{ accion.estilo }}"
+            data-accion-global="{{ accion.clave }}">
+      <i class="bi {{ accion.icono }}"></i> {{ accion.etiqueta }}</button>
+  {% endfor %}
+  {% if puede_escribir and modulo.campos_alta %}
+    <button class="btn btn-sm btn-primary" id="btn-alta">
+      <i class="bi bi-plus-lg"></i> {{ modulo.etiqueta_alta }}</button>
+  {% endif %}
+  {#
+    El aviso solo tiene sentido cuando de verdad no se puede hacer nada. Un
+    despachador que no da de alta mantenimientos pero sí registra los que
+    pasan por el taller no está "en solo consulta".
+  #}
+  {% if not puede_escribir and not acciones %}
     <span class="badge text-bg-light border">
       <i class="bi bi-eye"></i> Solo consulta con el rol {{ rol | title }}</span>
   {% endif %}

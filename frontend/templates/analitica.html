@@ -1,35 +1,47 @@
 {% extends "base.html" %}
 {% set seccion = 'analitica' %}
 {% block titulo %}Analítica{% endblock %}
-{% block encabezado %}Analítica{% endblock %}
+{% block encabezado %}Rutas y retrasos{% endblock %}
 {% block subtitulo %}
-  Las consultas agregadas del sistema. Cada una viene acompañada de su
-  lectura: eso es lo que convierte una gráfica en conocimiento.
+  Dónde se concentra el retraso y por qué.{% if periodo and periodo.etiqueta %}
+  Periodo analizado: <strong>{{ periodo.etiqueta }}</strong>.{% endif %}
 {% endblock %}
 
 {% block contenido %}
 
 <div class="sl-nota">
   <i class="bi bi-info-circle"></i>
-  Todas estas cifras se calculan sobre las entregas de calidad
-  <code>OK</code> del data warehouse: las de captura omitida no tienen retraso
-  medible y las canceladas nunca ocurrieron.
+  Todas estas cifras se calculan sobre las entregas <strong>medibles</strong>:
+  quedan fuera las que no llegaron a registrar su hora real —no tienen retraso
+  que medir— y las canceladas, que nunca ocurrieron. Incluirlas inventaría
+  puntualidad donde no la hubo.
 </div>
 
 <section class="sl-panel">
   <header class="sl-panel-cabecera">
-    <h2>Rutas más utilizadas</h2>
-    <p>Ordenadas por volumen. La barra se marca en rojo cuando la ruta
-       promedia más de {{ umbral }} minutos de retraso: esas pesan el doble,
-       porque su impacto se multiplica por las entregas que mueven.</p>
+    <h2>¿Qué rutas conviene mirar?</h2>
+    <p>Tres preguntas distintas sobre las mismas rutas. La barra se marca en
+       rojo cuando la ruta promedia más de {{ umbral }} minutos de retraso.
+       Al ordenar por promedio se excluyen las rutas de menos de 50 entregas:
+       una muestra pequeña da un promedio que no significa nada.</p>
   </header>
   <div class="sl-controles">
-    <label class="form-label mb-0" for="top">Mostrar</label>
-    <select class="form-select form-select-sm" id="top" style="width:auto">
-      <option value="5">5 rutas</option>
-      <option value="10" selected>10 rutas</option>
-      <option value="20">20 rutas</option>
-    </select>
+    <div class="sl-filtro">
+      <label class="form-label" for="orden">Ordenar por</label>
+      <select class="form-select form-select-sm" id="orden">
+        <option value="volumen">Volumen — ¿cuáles se usan más?</option>
+        <option value="retraso">Retraso medio — ¿cuáles llegan más tarde?</option>
+        <option value="incidencia">Proporción de fallo — ¿cuáles incumplen más a menudo?</option>
+      </select>
+    </div>
+    <div class="sl-filtro">
+      <label class="form-label" for="top">Mostrar</label>
+      <select class="form-select form-select-sm" id="top">
+        <option value="5">5 rutas</option>
+        <option value="10" selected>10 rutas</option>
+        <option value="20">Todas</option>
+      </select>
+    </div>
   </div>
   <canvas id="g-rutas" height="130"></canvas>
   <p class="sl-lectura" id="l-rutas">Cargando…</p>
@@ -60,9 +72,11 @@
 <section class="sl-panel">
   <header class="sl-panel-cabecera">
     <h2>Saturación por franja y día</h2>
-    <p>El data warehouse guarda la franja, no la hora exacta: es el grano al
-       que el diseño decidió analizar la saturación. La celda más oscura es
-       la de mayor carga.</p>
+    <p>La operación se analiza por franjas del día —madrugada, pico de la
+       mañana, valle, pico de la tarde y noche— y no hora a hora: la franja es
+       la unidad en que se decide una programación. La celda más oscura es la
+       de mayor carga; la estrella marca la franja donde menos se llega
+       tarde.</p>
   </header>
   <div class="sl-tabla-envoltura">
     <table class="table table-sm sl-mapa-calor">
@@ -80,5 +94,7 @@
 {% endblock %}
 
 {% block scripts %}
+<script id="datos-periodo" type="application/json">{{ (periodo or {}) | a_json }}</script>
+<script>window.SIGLOG.umbral = {{ umbral }};</script>
 <script src="/static/js/analitica.js"></script>
 {% endblock %}

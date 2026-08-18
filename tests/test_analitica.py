@@ -254,6 +254,239 @@ def test_la_saturacion_no_se_contradice():
 
 
 # ==========================================================================
+# DESEMPEÑO DE LA FLOTILLA
+# ==========================================================================
+def test_la_flotilla_cruza_costos_con_operacion():
+    """
+    Los costos vienen de `dim_vehiculo` y las entregas de `hecho_entrega`.
+    Si el cruce se rompiera, la pantalla mostraría unidades caras sin trabajo
+    o al revés, y nadie lo notaría a simple vista.
+    """
+    c = cliente_http()
+    r = c.get(f"{API}/analitica/vehiculos?orden=costo&top=100",
+              headers=cab(c))
+    assert r.status_code == 200, r.text
+    datos = r.json()["datos"]
+    assert datos["flotilla"] == 20, "las 20 unidades de la flotilla"
+
+    bd = obtener_bd()
+    dimension = {d["_id"]: d for d in bd["dim_vehiculo"].find({})}
+    for v in datos["vehiculos"]:
+        origen = dimension[v["vehiculo_id"]]
+        assert v["codigo_vehiculo"] == origen["codigo_vehiculo"]
+        assert abs(v["costo_total"] - origen["costo_total_operacion"]) < 0.01
+        assert abs(v["litros"] - origen["litros"]) < 0.1
+        # El costo total es la suma de sus dos componentes, no un tercer dato
+        assert abs(v["costo_total"] -
+                   (v["costo_combustible"] + v["costo_mantenimiento"])) < 0.05
+
+    # Las entregas del cruce deben coincidir con las del hecho
+    esperadas = {f["_id"]: f["n"] for f in bd["hecho_entrega"].aggregate([
+        {"$match": {"calidad_dato": "OK"}},
+        {"$group": {"_id": "$vehiculo_id", "n": {"$sum": "$numero_entregas"}}},
+    ])}
+    for v in datos["vehiculos"]:
+        assert v["entregas"] == esperadas.get(v["vehiculo_id"], 0), (
+            v["codigo_vehiculo"])
+
+
+def test_la_flotilla_se_identifica_por_su_codigo_no_por_su_id():
+    """
+    FASE de presentación: el identificador interno no puede ser lo que
+    represente a una unidad. Cada fila trae código, marca, modelo y placa.
+    """
+    c = cliente_http()
+    datos = c.get(f"{API}/analitica/vehiculos?top=5",
+                  headers=cab(c)).json()["datos"]
+    for v in datos["vehiculos"]:
+        assert v["codigo_vehiculo"].startswith("VEH-"), v
+        assert v["descripcion"].strip(), "falta marca y modelo"
+        assert v["placa"], "falta la placa"
+    # Y la lectura habla del código, no del identificador
+    assert "VEH-" in datos["lectura"]
+    assert datos["vehiculos"][0]["vehiculo_id"] not in datos["lectura"]
+
+
+def test_cada_criterio_de_flotilla_ordena_por_lo_que_dice():
+    c = cliente_http()
+    cabecera = cab(c)
+    campos = {"costo": "costo_total", "combustible": "litros",
+              "entregas": "entregas", "uso": "km_recorridos"}
+    for criterio, campo in campos.items():
+        filas = c.get(f"{API}/analitica/vehiculos?orden={criterio}&top=10",
+                      headers=cabecera).json()["datos"]["vehiculos"]
+        valores = [f[campo] for f in filas]
+        assert valores == sorted(valores, reverse=True), criterio
+
+    # El rendimiento va al revés: primero el peor, que es el que interesa
+    filas = c.get(f"{API}/analitica/vehiculos?orden=rendimiento&top=10",
+                  headers=cabecera).json()["datos"]["vehiculos"]
+    valores = [f["rendimiento_real_km_l"] for f in filas]
+    assert valores == sorted(valores), "el peor rendimiento debe ir primero"
+
+    assert c.get(f"{API}/analitica/vehiculos?orden=inventado",
+                 headers=cabecera).status_code == 409
+
+
+def test_los_totales_de_flotilla_cuadran_con_las_filas():
+    c = cliente_http()
+    datos = c.get(f"{API}/analitica/vehiculos?top=100",
+                  headers=cab(c)).json()["datos"]
+    filas, totales = datos["vehiculos"], datos["totales"]
+    assert abs(totales["costo_total"] -
+               sum(f["costo_total"] for f in filas)) < 0.5
+    assert abs(totales["litros"] - sum(f["litros"] for f in filas)) < 0.5
+    assert totales["entregas"] == sum(f["entregas"] for f in filas)
+    assert totales["en_mantenimiento"] == sum(
+        1 for f in filas if f["en_mantenimiento"])
+
+
+# ==========================================================================
+# DESEMPEÑO DE LOS OPERADORES
+# ==========================================================================
+def test_los_operadores_salen_de_su_dimension():
+    c = cliente_http()
+    r = c.get(f"{API}/analitica/operadores?orden=entregas&top=50",
+              headers=cab(c))
+    assert r.status_code == 200, r.text
+    datos = r.json()["datos"]
+    assert datos["plantilla"] == 24
+
+    bd = obtener_bd()
+    origen = {d["_id"]: d for d in bd["dim_operador"].find({})}
+    for o in datos["operadores"]:
+        d = origen[o["operador_id"]]
+        assert o["nombre"] == d["nombre_completo"]
+        assert o["entregas"] == int(d["entregas_medibles"])
+        assert o["pct_a_tiempo"] == d["porcentaje_entregas_a_tiempo"]
+
+    entregas = [o["entregas"] for o in datos["operadores"]]
+    assert entregas == sorted(entregas, reverse=True)
+    # La media de la plantilla sitúa a cada uno frente al resto
+    assert 0 < datos["puntualidad_media_pct"] <= 100
+
+
+def test_el_operador_se_identifica_por_su_nombre():
+    """Un identificador no le dice nada a quien lee un informe."""
+    c = cliente_http()
+    datos = c.get(f"{API}/analitica/operadores?top=3",
+                  headers=cab(c)).json()["datos"]
+    for o in datos["operadores"]:
+        assert o["nombre"].strip()
+        assert o["codigo_operador"].startswith("OPE-")
+    assert "OPE-" in datos["lectura"]
+
+
+# ==========================================================================
+# TENDENCIA
+# ==========================================================================
+def test_la_tendencia_cubre_todo_el_periodo():
+    c = cliente_http()
+    r = c.get(f"{API}/analitica/tendencia?agrupacion=semana", headers=cab(c))
+    assert r.status_code == 200, r.text
+    datos = r.json()["datos"]
+    puntos = datos["puntos"]
+    assert len(puntos) >= 20, "seis meses dan más de veinte semanas"
+
+    # Ordenados y sin huecos de formato
+    fechas = [p["inicio"] for p in puntos]
+    assert fechas == sorted(fechas)
+    for p in puntos:
+        assert p["etiqueta"].strip()
+        assert p["entregas"] > 0
+        assert 0 <= p["pct_retrasadas"] <= 100
+
+    # El total de la serie es el total del periodo: no se pierde ni se
+    # duplica ninguna entrega al agrupar
+    df = hechos()
+    assert sum(p["entregas"] for p in puntos) == int(df["numero_entregas"].sum())
+
+    assert c.get(f"{API}/analitica/tendencia?agrupacion=trimestre",
+                 headers=cab(c)).status_code == 409
+
+
+def test_la_tendencia_por_mes_agrupa_lo_mismo():
+    c = cliente_http()
+    cabecera = cab(c)
+    semanas = c.get(f"{API}/analitica/tendencia?agrupacion=semana",
+                    headers=cabecera).json()["datos"]
+    meses = c.get(f"{API}/analitica/tendencia?agrupacion=mes",
+                  headers=cabecera).json()["datos"]
+    assert len(meses["puntos"]) < len(semanas["puntos"])
+    assert (sum(p["entregas"] for p in meses["puntos"]) ==
+            sum(p["entregas"] for p in semanas["puntos"]))
+
+
+# ==========================================================================
+# CRITERIOS DE ORDEN EN RUTAS
+# ==========================================================================
+def test_las_rutas_responden_tres_preguntas_distintas():
+    """
+    Volumen, retraso e incidencia no son la misma pregunta, y la respuesta
+    tampoco tiene por qué ser la misma ruta.
+    """
+    c = cliente_http()
+    cabecera = cab(c)
+    resultados = {}
+    for orden in ("volumen", "retraso", "incidencia"):
+        r = c.get(f"{API}/analitica/rutas-mas-usadas?orden={orden}&top=10",
+                  headers=cabecera)
+        assert r.status_code == 200, f"{orden}: {r.text}"
+        resultados[orden] = r.json()["datos"]
+
+    assert [f["entregas"] for f in resultados["volumen"]["rutas"]] == sorted(
+        (f["entregas"] for f in resultados["volumen"]["rutas"]), reverse=True)
+    assert [f["retraso_medio_min"] for f in resultados["retraso"]["rutas"]] == \
+        sorted((f["retraso_medio_min"] for f in resultados["retraso"]["rutas"]),
+               reverse=True)
+    assert [f["pct_retrasadas"] for f in resultados["incidencia"]["rutas"]] == \
+        sorted((f["pct_retrasadas"] for f in resultados["incidencia"]["rutas"]),
+               reverse=True)
+
+    assert c.get(f"{API}/analitica/rutas-mas-usadas?orden=inventado",
+                 headers=cabecera).status_code == 409
+
+
+def test_los_promedios_excluyen_las_muestras_pequenas():
+    """
+    Una ruta con pocas entregas y un mal día encabezaría el ranking de
+    retrasos sin que eso significara nada. Ordenar por volumen, en cambio,
+    no necesita ese corte: ahí el tamaño ES la medida.
+    """
+    c = cliente_http()
+    cabecera = cab(c)
+    por_retraso = c.get(f"{API}/analitica/rutas-mas-usadas?orden=retraso&top=50",
+                        headers=cabecera).json()["datos"]
+    assert por_retraso["minimo_entregas"] > 0
+    for fila in por_retraso["rutas"]:
+        assert fila["entregas"] >= por_retraso["minimo_entregas"], fila
+
+    por_volumen = c.get(f"{API}/analitica/rutas-mas-usadas?orden=volumen&top=50",
+                        headers=cabecera).json()["datos"]
+    assert por_volumen["minimo_entregas"] == 0
+
+
+# ==========================================================================
+# EL PERIODO SE PUBLICA
+# ==========================================================================
+def test_toda_consulta_dice_de_que_periodo_habla():
+    """
+    Una cifra sin periodo no se puede interpretar: «1,127 entregas» dice
+    cosas distintas si son de una semana o de seis meses.
+    """
+    c = cliente_http()
+    cabecera = cab(c)
+    for ruta in ("/analitica/rutas-mas-usadas", "/analitica/vehiculos",
+                 "/analitica/operadores", "/analitica/tendencia"):
+        datos = c.get(API + ruta, headers=cabecera).json()["datos"]
+        periodo = datos.get("periodo")
+        assert periodo, ruta
+        assert periodo["desde"] and periodo["hasta"], ruta
+        assert periodo["desde"] <= periodo["hasta"], ruta
+        assert periodo["etiqueta"].strip(), ruta
+
+
+# ==========================================================================
 # PERMISOS Y CONTRATO
 # ==========================================================================
 def test_sin_sesion_no_hay_analitica():
@@ -301,6 +534,28 @@ if __name__ == "__main__":
         ("Saturación coincide con el heatmap",
          test_saturacion_coincide_con_el_heatmap),
         ("La saturación no se contradice", test_la_saturacion_no_se_contradice),
+        ("La flotilla cruza costos con operación",
+         test_la_flotilla_cruza_costos_con_operacion),
+        ("La flotilla se identifica por su código",
+         test_la_flotilla_se_identifica_por_su_codigo_no_por_su_id),
+        ("Cada criterio de flotilla ordena por lo que dice",
+         test_cada_criterio_de_flotilla_ordena_por_lo_que_dice),
+        ("Los totales de flotilla cuadran con las filas",
+         test_los_totales_de_flotilla_cuadran_con_las_filas),
+        ("Los operadores salen de su dimensión",
+         test_los_operadores_salen_de_su_dimension),
+        ("El operador se identifica por su nombre",
+         test_el_operador_se_identifica_por_su_nombre),
+        ("La tendencia cubre todo el periodo",
+         test_la_tendencia_cubre_todo_el_periodo),
+        ("La tendencia por mes agrupa lo mismo",
+         test_la_tendencia_por_mes_agrupa_lo_mismo),
+        ("Las rutas responden tres preguntas distintas",
+         test_las_rutas_responden_tres_preguntas_distintas),
+        ("Los promedios excluyen las muestras pequeñas",
+         test_los_promedios_excluyen_las_muestras_pequenas),
+        ("Toda consulta dice de qué periodo habla",
+         test_toda_consulta_dice_de_que_periodo_habla),
         ("Sin sesión no hay analítica", test_sin_sesion_no_hay_analitica),
         ("El analista consulta todo", test_el_analista_consulta_todo),
         ("El parámetro top se valida", test_el_top_se_valida),

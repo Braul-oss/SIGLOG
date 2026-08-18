@@ -224,7 +224,10 @@
           label: g.nombre,
           data: rutas.map(function (ruta) {
             return {x: ruta.componente_1, y: ruta.componente_2,
-                    codigo: ruta.codigo_ruta};
+                    codigo: ruta.codigo_ruta,
+                    retraso: ruta.retraso_medio_min,
+                    km: ruta.distancia_total_km,
+                    paradas: ruta.numero_paradas};
           }),
           backgroundColor: SL.COLORES.grupos[i % SL.COLORES.grupos.length],
           pointRadius: 6
@@ -236,14 +239,30 @@
         data: {datasets: conjuntos},
         options: {
           plugins: {
-            legend: {position: "bottom", labels: {boxWidth: 10, font: {size: 10}}},
+            title: {
+              display: true,
+              text: ["Rutas agrupadas por comportamiento",
+                     "Cada punto es una ruta; la distancia entre puntos " +
+                     "indica cuánto se parecen"],
+              font: {size: 13}, padding: {bottom: 10}
+            },
+            legend: {position: "bottom",
+                     labels: {boxWidth: 10, font: {size: 10}}},
             tooltip: {callbacks: {label: function (ctx) {
-              return ctx.raw.codigo + " (" + ctx.dataset.label + ")";
+              return [ctx.raw.codigo + " — " + ctx.dataset.label,
+                      "Retraso medio: " +
+                        SL.numero(ctx.raw.retraso, 1) + " min",
+                      "Distancia: " + SL.numero(ctx.raw.km, 1) + " km",
+                      "Paradas: " + SL.entero(ctx.raw.paradas)];
             }}}
           },
           scales: {
-            x: {title: {display: true, text: "Componente 1"}},
-            y: {title: {display: true, text: "Componente 2"}}
+            // Los ejes de un PCA no tienen unidad física: son las dos
+            // direcciones en que más se diferencian las rutas entre sí.
+            x: {title: {display: true,
+                        text: "Eje 1 — sobre todo distancia y número de paradas"}},
+            y: {title: {display: true,
+                        text: "Eje 2 — sobre todo retraso e incidentes"}}
           }
         }
       });

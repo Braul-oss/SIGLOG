@@ -58,15 +58,110 @@ def kpis(bd: BaseDatos, usuario: UsuarioAutenticado) -> dict[str, Any]:
 @router.get(
     "/rutas-mas-usadas",
     response_model=Respuesta[dict[str, Any]],
-    summary="Rutas por volumen, con su retraso medio",
-    description="Ordenadas por entregas. La bandera `sobre_umbral` marca las "
-                "que promedian más retraso del admitido: son las que más "
-                "pesan, porque su impacto se multiplica por el volumen.",
+    summary="Rutas por volumen, retraso o incidencia",
+    description=(
+        "Un mismo listado responde tres preguntas del proyecto según cómo se "
+        "ordene:\n\n"
+        "- `volumen` — **¿qué rutas son más utilizadas?**\n"
+        "- `retraso` — **¿qué rutas presentan mayores retrasos?**\n"
+        "- `incidencia` — ¿en qué rutas se retrasa una proporción mayor de "
+        "entregas? No es lo mismo: una ruta puede desviarse pocos minutos "
+        "cada vez y aun así incumplir casi siempre.\n\n"
+        "Al ordenar por promedio se descartan las rutas con menos de 50 "
+        "entregas: el promedio de una muestra diminuta es ruido con "
+        "apariencia de dato."
+    ),
+    responses={409: {"description": "Criterio de orden no válido."}},
 )
 def rutas_mas_usadas(bd: BaseDatos, usuario: UsuarioAutenticado,
                      top: int = Query(default=10, ge=1, le=100),
+                     orden: str = Query(
+                         default="volumen",
+                         description="volumen · retraso · incidencia"),
                      ) -> dict[str, Any]:
-    datos = servicio.rutas_mas_usadas(bd, top)
+    datos = servicio.rutas_mas_usadas(bd, top, orden)
+    return respuestas.exito(datos=datos, mensaje=datos["lectura"],
+                            total=datos["total"])
+
+
+@router.get(
+    "/vehiculos",
+    response_model=Respuesta[dict[str, Any]],
+    summary="Desempeño de la flotilla",
+    description=(
+        "Una fila por vehículo con lo que decide si conviene mantenerlo en "
+        "operación. Responde cuatro preguntas del proyecto según el "
+        "criterio de orden:\n\n"
+        "- `costo` — **¿qué vehículos generan mayores costos?**\n"
+        "- `combustible` — **¿qué vehículos consumen más combustible?**\n"
+        "- `entregas` — ¿cuáles trabajan más?\n"
+        "- `retraso` — ¿cuáles llegan tarde con más frecuencia?\n"
+        "- `rendimiento` — ¿cuáles se apartan más de su km/l de ficha?\n"
+        "- `uso` — ¿cuáles acumulan más kilómetros?\n\n"
+        "Los costos, los litros y el mantenimiento salen de `dim_vehiculo`, "
+        "que es donde el ETL los consolidó; las entregas y los retrasos, de "
+        "`hecho_entrega`. Ninguna cifra se recalcula aquí."
+    ),
+    responses={409: {"description": "Criterio no válido."},
+               503: {"description": "El almacén analítico aún no se ha cargado."}},
+)
+def desempeno_vehiculos(bd: BaseDatos, usuario: UsuarioAutenticado,
+                        orden: str = Query(
+                            default="costo",
+                            description="costo · combustible · entregas · "
+                                        "retraso · rendimiento · uso"),
+                        top: int = Query(default=20, ge=1, le=100),
+                        ) -> dict[str, Any]:
+    datos = servicio.desempeno_vehiculos(bd, orden, top)
+    return respuestas.exito(datos=datos, mensaje=datos["lectura"],
+                            total=datos["total"])
+
+
+@router.get(
+    "/operadores",
+    response_model=Respuesta[dict[str, Any]],
+    summary="Desempeño de los operadores",
+    description=(
+        "**¿Qué operadores realizan más entregas?**, y con qué puntualidad. "
+        "Ordenable por `entregas`, `puntualidad` (de peor a mejor) o "
+        "`retraso`.\n\n"
+        "El volumen por sí solo no mide desempeño: la respuesta incluye la "
+        "puntualidad media de la plantilla para poder situar a cada uno "
+        "frente al resto."
+    ),
+    responses={409: {"description": "Criterio no válido."},
+               503: {"description": "El almacén analítico aún no se ha cargado."}},
+)
+def desempeno_operadores(bd: BaseDatos, usuario: UsuarioAutenticado,
+                         orden: str = Query(
+                             default="entregas",
+                             description="entregas · puntualidad · retraso"),
+                         top: int = Query(default=30, ge=1, le=100),
+                         ) -> dict[str, Any]:
+    datos = servicio.desempeno_operadores(bd, orden, top)
+    return respuestas.exito(datos=datos, mensaje=datos["lectura"],
+                            total=datos["total"])
+
+
+@router.get(
+    "/tendencia",
+    response_model=Respuesta[dict[str, Any]],
+    summary="Evolución de las entregas y del retraso",
+    description=(
+        "Serie temporal por semana o por mes. Una cifra agregada no dice si "
+        "la situación mejora o empeora, y esa es la pregunta de quien mira "
+        "un panel.\n\n"
+        "La lectura compara el primer tercio del periodo contra el último: "
+        "enfrentar solo el primer punto con el último sería frágil, porque "
+        "una semana atípica invertiría la conclusión."
+    ),
+    responses={409: {"description": "Agrupación no válida."}},
+)
+def tendencia(bd: BaseDatos, usuario: UsuarioAutenticado,
+              agrupacion: str = Query(default="semana",
+                                      description="semana · mes"),
+              ) -> dict[str, Any]:
+    datos = servicio.tendencia(bd, agrupacion)
     return respuestas.exito(datos=datos, mensaje=datos["lectura"],
                             total=datos["total"])
 
