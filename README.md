@@ -179,6 +179,11 @@ Todos bajo el prefijo `/api/v1` (§12.2 del documento técnico).
 | POST | `/entregas/generar` | admin o despachador | Generarlas todas desde la ruta |
 | PATCH | `/entregas/{id}/llegada` | admin o despachador | Registrar la llegada → calcula el retraso |
 | PATCH | `/entregas/{id}/estatus` | admin o despachador | Cambiar estatus + historial |
+| GET | `/incidentes` · `/catalogos` · `/resumen` · `/{id}` | sesión | Consultar incidentes |
+| GET | `/incidentes/bitacora/{viaje_id}` | sesión | Bitácora de seguimiento del viaje |
+| POST | `/incidentes` | admin o despachador | Registrar un incidente |
+| POST | `/incidentes/{id}/afectar-entregas` | admin o despachador | Recalcular ETA (RF-33) |
+| PATCH | `/incidentes/{id}/cerrar` | admin o despachador | Cerrar y calcular la duración |
 
 En el módulo de clientes el permiso **no es uniforme**: consultar lo puede
 hacer cualquier sesión —el despachador necesita ver clientes para registrar
@@ -261,6 +266,27 @@ administrador no pueda dejar el sistema sin quien lo administre:
 | RN-E5 | Los campos denormalizados preservan el dato histórico (§10.4) |
 | RN-E6 | La causa de retraso solo se acepta si la entrega llegó retrasada |
 | RN-E7 | La entrega hereda del viaje su ruta, vehículo, operador y fecha |
+
+**Reglas del módulo de incidentes:**
+
+| Regla | Qué impide |
+|---|---|
+| RN-I1 | El folio INC-AAAAMMDD-NNN lo genera el sistema |
+| RN-I2 | No se registran incidentes sobre viajes cerrados |
+| RN-I3 | La duración se calcula al cerrar, del inicio y el fin |
+| RN-I4 | El recálculo de ETA solo alcanza a las entregas pendientes del viaje |
+| RN-I5 | El recálculo escribe `hora_estimada_recalculada` y **nunca** pisa `hora_estimada_llegada` |
+| RN-I6 | Cada recálculo deja constancia en `seguimiento_eventos` |
+
+> **RN-I5 es la regla que protege a los modelos.** El retraso se mide como
+> `real − hora_estimada_llegada`. Si un incidente sobrescribiera esa hora, la
+> entrega parecería puntual justamente por el incidente que la retrasó, y los
+> modelos perderían la señal que este módulo existe para darles.
+
+> **El recálculo lineal es un supuesto declarado.** El §17.3 advierte que un
+> incidente de 25 minutos podría no retrasar 25 minutos a la última parada del
+> día. Se implementa como dice el documento y la respuesta del API lleva esa
+> advertencia, para que la cifra no se tome por una certeza.
 
 > **`PATCH /entregas/{id}/llegada` es el endpoint más importante del sistema.**
 > Ahí nacen `retraso_min` y `es_retraso`, las dos variables que los modelos
@@ -362,6 +388,7 @@ python tests/test_operadores.py     # módulo operadores (29 pruebas)
 python tests/test_rutas.py          # módulo rutas (34 pruebas)
 python tests/test_viajes.py         # módulo viajes (26 pruebas)
 python tests/test_entregas.py       # módulo entregas (26 pruebas)
+python tests/test_incidentes.py     # módulo incidentes (22 pruebas)
 
 # o con pytest
 pytest tests/ -v
@@ -416,8 +443,8 @@ Frontend → FastAPI → Service → analytics/ · ml/ → MongoDB → respuesta
 | Backend base (API) | Completo |
 | Autenticación y roles (JWT) | Completo |
 | Gestión de usuarios y roles | Completo |
-| Módulos: clientes, vehículos, operadores, rutas, viajes, entregas | Completo |
-| Módulos restantes (3): incidentes, combustible, mantenimiento | Pendiente |
+| Módulos: clientes, vehículos, operadores, rutas, viajes, entregas, incidentes | Completo |
+| Módulos restantes (2): combustible, mantenimiento | Pendiente |
 | Endpoints de analítica y ML | Pendiente |
 | Frontend | Pendiente |
 | Reportes PDF | Pendiente |

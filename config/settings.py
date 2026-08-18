@@ -277,11 +277,40 @@ ESTATUS_VIAJE_ABIERTOS: tuple[str, ...] = (
 )
 
 
+# §11.7 — Incidentes.
+# La escala de severidad estaba marcada como "regla pendiente" en el §11.7.
+# Se fija con los tres valores que la simulación ya usa; son los que
+# alimentan a los modelos como predictor de los retrasos anómalos.
+CATALOGO_SEVERIDAD_INCIDENTE: tuple[str, ...] = ("BAJA", "MEDIA", "ALTA")
+
+CATALOGO_FUENTE_INCIDENTE: tuple[str, ...] = ("MANUAL", "API_EXTERNA", "SIMULADO")
+
+# §11.10 — Bitácora de seguimiento. El recálculo de ETA (RF-33) escribe
+# aquí su rastro, que es el paso 4 del procedimiento del §17.3.
+CATALOGO_TIPO_EVENTO_SEGUIMIENTO: tuple[str, ...] = (
+    "SALIDA", "LLEGADA_PARADA", "INCIDENTE", "DESVIO",
+    "RECALCULO_ETA", "REGRESO",
+)
+
+# RF-33 — El §17.3 propone sumar los minutos perdidos al ETA de las
+# entregas pendientes, y ADVIERTE que ese recálculo lineal es un supuesto,
+# no una regla confirmada: un incidente de 25 minutos podría no retrasar
+# 25 minutos a la última parada del día. Se implementa como dice el
+# documento y la respuesta del API lo declara, para que nadie lo tome por
+# una certeza.
+RECALCULO_ETA_ES_LINEAL: bool = True
+ADVERTENCIA_RECALCULO_ETA: str = (
+    "El recálculo suma linealmente los minutos perdidos al ETA de cada "
+    "entrega pendiente. El §17.3 del documento técnico advierte que ese "
+    "supuesto no está confirmado: un incidente de 25 minutos podría no "
+    "retrasar 25 minutos a la última parada del día."
+)
+
+
 # --------------------------------------------------------------------------
 # REGLAS AÚN PENDIENTES (no se convierten en enum hasta ser aprobadas)
 #   RNP-05  tipo de mantenimiento (PREVENTIVO / CORRECTIVO)
 #   RNP-13  ventanas horarias comprometidas con el cliente
-#   severidad de incidente: escala pendiente de definir
 # --------------------------------------------------------------------------
 
 

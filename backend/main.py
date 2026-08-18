@@ -46,8 +46,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, RedirectResponse
 from pymongo.errors import PyMongoError
 
-from backend.routers import (autenticacion, clientes, entregas, operadores,
-                             rutas, sistema, usuarios, vehiculos, viajes)
+from backend.routers import (autenticacion, clientes, entregas, incidentes,
+                             operadores, rutas, sistema, usuarios, vehiculos,
+                             viajes)
 from backend.schemas.comunes import RespuestaError
 from backend.utils import respuestas
 from backend.utils.errores import ErrorSIGLOG
@@ -253,6 +254,7 @@ app.include_router(operadores.router, prefix=settings.API_PREFIJO)
 app.include_router(rutas.router, prefix=settings.API_PREFIJO)
 app.include_router(viajes.router, prefix=settings.API_PREFIJO)
 app.include_router(entregas.router, prefix=settings.API_PREFIJO)
+app.include_router(incidentes.router, prefix=settings.API_PREFIJO)
 app.include_router(sistema.router, prefix=settings.API_PREFIJO)
 
 # --------------------------------------------------------------------------

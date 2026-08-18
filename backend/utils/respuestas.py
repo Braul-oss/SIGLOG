@@ -12,7 +12,7 @@ otro modo aparecería en cada módulo: MongoDB devuelve `ObjectId` y
 
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from typing import Any
 
 from bson import ObjectId
@@ -28,7 +28,16 @@ def serializable(valor: Any) -> Any:
     """
     if isinstance(valor, ObjectId):
         return str(valor)
-    if isinstance(valor, (datetime, date)):
+    if isinstance(valor, datetime):
+        # Siempre UTC y con sufijo Z. Es el formato que Pydantic emite en los
+        # endpoints con modelo de respuesta tipado; sin esta normalización, el
+        # mismo campo salía como "+00:00" desde los que devuelven un
+        # diccionario libre, y un cliente que comparase marcas de tiempo como
+        # texto vería diferencias donde no las hay.
+        if valor.tzinfo is None:
+            valor = valor.replace(tzinfo=timezone.utc)
+        return valor.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
+    if isinstance(valor, date):
         return valor.isoformat()
     if isinstance(valor, dict):
         return {clave: serializable(v) for clave, v in valor.items()}
