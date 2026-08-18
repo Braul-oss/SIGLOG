@@ -1,7 +1,7 @@
 ==============================================================================
   SIG-LOG · DASHBOARD (PA-10)
 ==============================================================================
-  Generado: 2026-08-18 07:17 UTC
+  Generado: 2026-08-18 07:34 UTC
   Datos SIMULADOS con fines académicos (decisión C-02). Ninguna cifra describe una empresa real.
 
   Leyendo el data warehouse...

@@ -38,6 +38,20 @@ def crear_cliente() -> TestClient:
     return TestClient(app)
 
 
+# Desde que existe la autenticación (RNP-11), los endpoints de diagnóstico
+# exigen sesión. Estas pruebas la inician para poder seguir comprobando lo
+# suyo; que la protección funcione se prueba en tests/test_autenticacion.py.
+CUENTA_PRUEBA = {"username": "admin", "password": "siglog2026"}
+
+
+def cabecera_autenticada(cliente: TestClient) -> dict[str, str]:
+    respuesta = cliente.post(f"{API}/auth/login", data=CUENTA_PRUEBA)
+    assert respuesta.status_code == 200, (
+        "No se pudo iniciar sesión con la cuenta de prueba. Créala con: "
+        "python -m database.crear_usuario --usuario admin --rol ADMINISTRADOR")
+    return {"Authorization": f"Bearer {respuesta.json()['datos']['access_token']}"}
+
+
 # ==========================================================================
 # CONTRATO DE RESPUESTA  (§12.2)
 # ==========================================================================
@@ -68,7 +82,12 @@ def test_info_declara_capacidades():
     capacidades = cuerpo["datos"]["capacidades"]
     assert capacidades["prefijo"] == API
     assert "sistema" in capacidades["modulos_disponibles"]
-    assert "autenticacion" in capacidades["modulos_pendientes"]
+    # La autenticación pasó de pendiente a disponible al implementarse (RNP-11)
+    assert "autenticacion" in capacidades["modulos_disponibles"]
+    assert "autenticacion" not in capacidades["modulos_pendientes"]
+    assert capacidades["seguridad"]["metodo"].startswith("JWT")
+    # Los módulos CRUD siguen pendientes
+    assert "clientes" in capacidades["modulos_pendientes"]
 
 
 def test_salud_mongodb():
@@ -85,7 +104,8 @@ def test_salud_mongodb():
 def test_diagnostico_colecciones():
     """GET /diagnostico/colecciones cuenta documentos reales de la base."""
     with crear_cliente() as cliente:
-        respuesta = cliente.get(f"{API}/diagnostico/colecciones")
+        respuesta = cliente.get(f"{API}/diagnostico/colecciones",
+                                headers=cabecera_autenticada(cliente))
     assert respuesta.status_code == 200, respuesta.text
     cuerpo = respuesta.json()
     _validar_formato_exito(cuerpo)
@@ -97,7 +117,8 @@ def test_diagnostico_colecciones():
 def test_diagnostico_muestra_serializa():
     """La muestra devuelve documentos con `_id` y fechas ya serializados."""
     with crear_cliente() as cliente:
-        respuesta = cliente.get(f"{API}/diagnostico/muestra/vehiculos?limite=3")
+        respuesta = cliente.get(f"{API}/diagnostico/muestra/vehiculos?limite=3",
+                                headers=cabecera_autenticada(cliente))
     assert respuesta.status_code == 200, respuesta.text
     cuerpo = respuesta.json()
     _validar_formato_exito(cuerpo)
@@ -113,7 +134,8 @@ def test_diagnostico_muestra_serializa():
 def test_error_404_con_formato_uniforme():
     """Una colección fuera del catálogo responde 404 con el formato del §12.2."""
     with crear_cliente() as cliente:
-        respuesta = cliente.get(f"{API}/diagnostico/muestra/inventada")
+        respuesta = cliente.get(f"{API}/diagnostico/muestra/inventada",
+                                headers=cabecera_autenticada(cliente))
     assert respuesta.status_code == 404
     cuerpo = respuesta.json()
     assert cuerpo["exito"] is False
@@ -124,7 +146,8 @@ def test_error_404_con_formato_uniforme():
 def test_error_422_con_formato_uniforme():
     """Un parámetro fuera de rango responde 422 traducido al formato propio."""
     with crear_cliente() as cliente:
-        respuesta = cliente.get(f"{API}/diagnostico/muestra/vehiculos?limite=999")
+        respuesta = cliente.get(f"{API}/diagnostico/muestra/vehiculos?limite=999",
+                                headers=cabecera_autenticada(cliente))
     assert respuesta.status_code == 422
     cuerpo = respuesta.json()
     assert cuerpo["exito"] is False

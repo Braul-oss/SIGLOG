@@ -19,6 +19,10 @@ scikit-learn>=1.8
 # --- Visualización ---
 matplotlib>=3.11
 
+# --- Seguridad (RNP-11: JWT + hash de contraseñas) ---
+PyJWT>=2.9
+bcrypt>=4.2
+
 # --- API / backend web ---
 fastapi>=0.115
 uvicorn[standard]>=0.30

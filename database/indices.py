@@ -117,6 +117,15 @@ INDICES: dict[str, list[dict[str, Any]]] = {
         {"claves": [("viaje_id", ASCENDING), ("fecha_hora", ASCENDING)], "nombre": "ix_seguimiento_viaje_fecha"},
         {"claves": [("tipo_evento", ASCENDING)], "nombre": "ix_seguimiento_tipo_evento"},
     ],
+    # ---------------- usuarios (colección de sistema, RNP-11) ----------------
+    # El índice único sobre `usuario` es la garantía de que no existan dos
+    # cuentas con el mismo identificador de acceso: sin él, la unicidad
+    # dependería de que el código la comprobara siempre, y basta una
+    # condición de carrera para duplicar.
+    "usuarios": [
+        {"claves": [("usuario", ASCENDING)], "nombre": "ux_usuarios_usuario", "unico": True},
+        {"claves": [("rol", ASCENDING)], "nombre": "ix_usuarios_rol"},
+    ],
     # ---------------- hecho_entrega (esquema fijado en la carga del DW) ------
     # Las dimensiones no llevan índices adicionales: se consultan por _id.
     "hecho_entrega": [

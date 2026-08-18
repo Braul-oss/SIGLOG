@@ -352,6 +352,34 @@ SEGUIMIENTO_EVENTOS = _esquema(
 
 
 # --------------------------------------------------------------------------
+# usuarios — colección de SISTEMA (RNP-11 opción b)
+# --------------------------------------------------------------------------
+# No pertenece al §11: el documento dejó la autenticación como regla
+# pendiente. Al resolverse, la colección se suma en el grupo
+# COLECCIONES_SISTEMA, fuera del alcance del ETL.
+#
+# El documento NO almacena la contraseña, sino su hash bcrypt. Un sistema
+# que guarda contraseñas legibles las expone en cada respaldo y en cada
+# consulta de diagnóstico.
+USUARIOS = _esquema(
+    "usuarios — credenciales y control de acceso (RNP-11)",
+    ["usuario", "hash_contrasena", "nombre_completo", "rol"],
+    {
+        "usuario": {"bsonType": "string"},          # identificador de acceso
+        "hash_contrasena": {"bsonType": "string"},  # bcrypt, nunca texto plano
+        "nombre_completo": {"bsonType": "string"},
+        "correo": _STR,
+        "rol": {
+            "bsonType": "string",
+            "enum": list(settings.CATALOGO_ROLES),
+        },
+        "ultimo_acceso": _FECHA,
+        "intentos_fallidos": _NUM,
+    },
+)
+
+
+# --------------------------------------------------------------------------
 # Registro consultado por database/inicializar_bd.py
 # --------------------------------------------------------------------------
 VALIDADORES: dict[str, dict[str, Any]] = {
@@ -365,6 +393,7 @@ VALIDADORES: dict[str, dict[str, Any]] = {
     "combustible": COMBUSTIBLE,
     "mantenimientos": MANTENIMIENTOS,
     "seguimiento_eventos": SEGUIMIENTO_EVENTOS,
+    "usuarios": USUARIOS,
 }
 
 # Las colecciones analíticas (hecho_entrega, dim_*, modelos_ml, predicciones,

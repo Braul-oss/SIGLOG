@@ -11,11 +11,16 @@ de que esa lógica pertenece a un servicio.
 
 Endpoints (§12.3, recurso "Sistema"):
 
-    GET /salud                      ¿responde la API?
-    GET /salud/mongodb              ¿alcanza MongoDB Atlas?
-    GET /info                       versión, configuración y capacidades
-    GET /diagnostico/colecciones    conteo por colección (prueba de consulta)
-    GET /diagnostico/muestra/{col}  primeros documentos de una colección
+    GET /salud                      ¿responde la API?            público
+    GET /salud/mongodb              ¿alcanza MongoDB Atlas?      público
+    GET /info                       versión y capacidades        público
+    GET /diagnostico/colecciones    conteo por colección         autenticado
+    GET /diagnostico/muestra/{col}  documentos de una colección  autenticado
+
+Los de diagnóstico exigen sesión desde que existe la autenticación: uno
+revela la forma de la base y el otro devuelve documentos reales. Los de
+salud siguen abiertos a propósito, porque un monitor externo debe poder
+comprobar que el servicio vive sin tener credenciales.
 """
 
 from __future__ import annotations
@@ -24,7 +29,7 @@ from typing import Any
 
 from fastapi import APIRouter, Path, Query, status
 
-from backend.dependencias import BaseDatos
+from backend.dependencias import BaseDatos, UsuarioAutenticado
 from backend.schemas.comunes import Respuesta
 from backend.services import sistema as servicio
 from backend.utils import respuestas
@@ -89,11 +94,16 @@ def info() -> dict[str, Any]:
     description=(
         "Recorre el catálogo de colecciones del diseño (§11) y cuenta sus "
         "documentos, separando las operativas de las analíticas. Es la "
-        "prueba de que la API consulta MongoDB de extremo a extremo."
+        "prueba de que la API consulta MongoDB de extremo a extremo. "
+        "**Requiere sesión iniciada**: revela la estructura de la base."
     ),
-    responses={503: {"description": "MongoDB Atlas no está accesible."}},
+    responses={
+        401: {"description": "Requiere sesión iniciada."},
+        503: {"description": "MongoDB Atlas no está accesible."},
+    },
 )
-def diagnostico_colecciones(bd: BaseDatos) -> dict[str, Any]:
+def diagnostico_colecciones(bd: BaseDatos,
+                            usuario: UsuarioAutenticado) -> dict[str, Any]:
     inventario = servicio.inventario_colecciones(bd)
     return respuestas.exito(
         datos=inventario,
@@ -110,15 +120,18 @@ def diagnostico_colecciones(bd: BaseDatos) -> dict[str, Any]:
     description=(
         "Devuelve los primeros documentos de una colección del catálogo. "
         "Verifica el flujo completo Router → Service → Repository → MongoDB "
-        "y la serialización de ObjectId y fechas."
+        "y la serialización de ObjectId y fechas. "
+        "**Requiere sesión iniciada**: devuelve documentos reales."
     ),
     responses={
+        401: {"description": "Requiere sesión iniciada."},
         404: {"description": "La colección no pertenece al catálogo del diseño."},
         503: {"description": "MongoDB Atlas no está accesible."},
     },
 )
 def diagnostico_muestra(
     bd: BaseDatos,
+    usuario: UsuarioAutenticado,
     coleccion: str = Path(description="Nombre de la colección (§11)."),
     limite: int = Query(default=5, ge=1, le=50,
                         description="Número de documentos a devolver."),

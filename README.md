@@ -29,6 +29,9 @@ pip install -r requirements.txt
 # Configura las credenciales
 cp .env.example .env
 # Edita .env con tu usuario, contraseña y cluster de MongoDB Atlas
+
+# Genera la clave de firma de los tokens y colócala en JWT_CLAVE
+python -c "import secrets; print(secrets.token_hex(32))"
 ```
 
 Verifica que la conexión y la estructura estén correctas:
@@ -70,25 +73,65 @@ uvicorn backend.main:app --reload
 El host, el puerto y la recarga automática se configuran en el `.env`
 (`API_HOST`, `API_PUERTO`, `API_RECARGA`).
 
+### Primer usuario
+
+La API exige sesión para las operaciones protegidas, así que hay que crear
+una cuenta antes de poder usarla:
+
+```bash
+python -m database.crear_usuario --usuario admin --rol ADMINISTRADOR
+python -m database.crear_usuario --listar          # ver las cuentas existentes
+python -m database.crear_usuario --usuario admin --restablecer
+```
+
+La contraseña se pide por consola y nunca se pasa como argumento: quedaría
+registrada en el historial del shell.
+
+**Roles disponibles** (RNP-11, actores del §3):
+
+| Rol | Quién es | Qué hace |
+|---|---|---|
+| `ADMINISTRADOR` | Coordinador logístico | Catálogos, configuración y usuarios |
+| `DESPACHADOR` | Capturista | Registra la operación del día a día |
+| `ANALISTA` | Directivo | Consulta dashboard, reportes y resultados de ML |
+
 ### Endpoints disponibles
 
 Todos bajo el prefijo `/api/v1` (§12.2 del documento técnico).
 
-| Método | Endpoint | Propósito |
-|---|---|---|
-| GET | `/salud` | Verifica que la API responde (no consulta MongoDB) |
-| GET | `/salud/mongodb` | Ping real contra MongoDB Atlas |
-| GET | `/info` | Versión, entorno y módulos disponibles |
-| GET | `/diagnostico/colecciones` | Conteo de documentos por colección |
-| GET | `/diagnostico/muestra/{coleccion}` | Documentos de muestra de una colección |
+| Método | Endpoint | Acceso | Propósito |
+|---|---|---|---|
+| GET | `/salud` | público | Verifica que la API responde (no consulta MongoDB) |
+| GET | `/salud/mongodb` | público | Ping real contra MongoDB Atlas |
+| GET | `/info` | público | Versión, entorno y módulos disponibles |
+| POST | `/auth/login` | público | Inicia sesión y devuelve el token JWT |
+| GET | `/auth/estado` | público | Estado del subsistema de seguridad |
+| GET | `/auth/yo` | sesión | Datos del usuario autenticado |
+| POST | `/auth/cambiar-contrasena` | sesión | Cambia la contraseña propia |
+| GET | `/diagnostico/colecciones` | sesión | Conteo de documentos por colección |
+| GET | `/diagnostico/muestra/{coleccion}` | sesión | Documentos de muestra |
+
+Los endpoints de salud quedan abiertos a propósito: un monitor externo debe
+poder comprobar que el servicio vive sin tener credenciales.
 
 Prueba rápida con el servidor levantado:
 
 ```bash
+# Endpoints públicos
 curl http://127.0.0.1:8000/api/v1/salud
 curl http://127.0.0.1:8000/api/v1/salud/mongodb
-curl http://127.0.0.1:8000/api/v1/diagnostico/colecciones
+
+# Iniciar sesión: copia el valor de "access_token" de la respuesta
+curl -X POST http://127.0.0.1:8000/api/v1/auth/login -d "username=admin&password=TU_CONTRASENA"
+
+# Usarlo en los endpoints protegidos
+TOKEN="pega-aqui-el-access_token"
+curl -H "Authorization: Bearer $TOKEN" http://127.0.0.1:8000/api/v1/auth/yo
+curl -H "Authorization: Bearer $TOKEN" http://127.0.0.1:8000/api/v1/diagnostico/colecciones
 ```
+
+Desde **http://127.0.0.1:8000/docs** es más cómodo: el botón *Authorize* pide
+usuario y contraseña, y adjunta el token en las peticiones siguientes.
 
 ---
 
@@ -133,8 +176,9 @@ python -m etl.exploracion
 ## Pruebas
 
 ```bash
-python tests/test_conexion.py     # conexión, colecciones e índices
-python tests/test_api.py          # backend base (13 pruebas)
+python tests/test_conexion.py       # conexión, colecciones e índices
+python tests/test_api.py            # backend base (13 pruebas)
+python tests/test_autenticacion.py  # seguridad y roles (21 pruebas)
 
 # o con pytest
 pytest tests/ -v
@@ -186,7 +230,8 @@ Frontend → FastAPI → Service → analytics/ · ml/ → MongoDB → respuesta
 | Machine Learning supervisado y no supervisado | Completo |
 | KPIs y dashboard | Completo |
 | Backend base (API) | Completo |
-| Autenticación, usuarios y roles | Pendiente |
+| Autenticación y roles (JWT) | Completo |
+| Gestión de usuarios | Pendiente |
 | Módulos CRUD | Pendiente |
 | Endpoints de analítica y ML | Pendiente |
 | Frontend | Pendiente |

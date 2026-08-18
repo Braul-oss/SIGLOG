@@ -130,12 +130,18 @@ def capacidades() -> dict[str, Any]:
     return {
         "prefijo": settings.API_PREFIJO,
         "documentacion": "/docs",
-        "modulos_disponibles": ["sistema"],
+        "modulos_disponibles": ["sistema", "autenticacion"],
         "modulos_pendientes": [
-            "autenticacion", "usuarios", "clientes", "vehiculos", "operadores",
+            "usuarios", "clientes", "vehiculos", "operadores",
             "rutas", "viajes", "entregas", "incidentes", "combustible",
             "mantenimientos", "analitica", "ml",
         ],
+        "seguridad": {
+            "metodo": "JWT (HS256)",
+            "roles": list(settings.CATALOGO_ROLES),
+            "endpoints_publicos": ["/salud", "/salud/mongodb", "/info",
+                                   "/auth/login", "/auth/estado"],
+        },
         "capa_analitica": {
             "etl": "etl/run_etl.py",
             "kpis": "analytics/kpis.py",

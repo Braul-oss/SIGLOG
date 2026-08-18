@@ -46,10 +46,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, RedirectResponse
 from pymongo.errors import PyMongoError
 
-from backend.routers import sistema
+from backend.routers import autenticacion, sistema
 from backend.schemas.comunes import RespuestaError
 from backend.utils import respuestas
 from backend.utils.errores import ErrorSIGLOG
+from backend.utils.seguridad import CredencialesInvalidas, PermisoDenegado
 from config import settings
 from config.mongo_conexion import cerrar_cliente, verificar_conexion
 
@@ -85,6 +86,22 @@ async def ciclo_de_vida(app: FastAPI):
           f"{settings.API_PREFIJO}")
     print(f"  Documentación . http://{settings.API_HOST}:{settings.API_PUERTO}/docs")
     print(f"  Datos ......... SIMULADOS (decisión C-02)")
+
+    # Advertencias de seguridad: mejor verlas al arrancar que descubrirlas
+    # cuando nadie pueda entrar o cuando la clave ya esté comprometida.
+    if settings.jwt_clave_es_insegura():
+        print("  SEGURIDAD ..... JWT_CLAVE es la de desarrollo. Genera una con")
+        print("                  python -c \"import secrets; print(secrets.token_hex(32))\"")
+    if respuesta["exito"]:
+        try:
+            from backend.repositories.usuarios import RepositorioUsuarios
+            from config.mongo_conexion import obtener_bd
+
+            if not RepositorioUsuarios(obtener_bd()).hay_usuarios():
+                print("  SEGURIDAD ..... no hay ningún usuario registrado. Crea el")
+                print("                  primero con: python -m database.crear_usuario")
+        except Exception:            # noqa: BLE001 — el aviso no puede tumbar el arranque
+            pass
     print("=" * 70)
 
     yield
@@ -137,6 +154,31 @@ async def manejar_error_dominio(_: Request, exc: ErrorSIGLOG) -> JSONResponse:
     """Errores de negocio: cada uno ya trae su código HTTP y su codigo_error."""
     return JSONResponse(
         status_code=exc.estado_http,
+        content=respuestas.error(exc.mensaje, exc.codigo_error, exc.detalles),
+    )
+
+
+@app.exception_handler(CredencialesInvalidas)
+async def manejar_credenciales(_: Request,
+                               exc: CredencialesInvalidas) -> JSONResponse:
+    """
+    401 — no se pudo verificar quién hace la petición.
+
+    Lleva la cabecera `WWW-Authenticate`, que el estándar HTTP exige en un
+    401 y que los clientes usan para saber cómo autenticarse.
+    """
+    return JSONResponse(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        content=respuestas.error(exc.mensaje, exc.codigo_error, exc.detalles),
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+
+
+@app.exception_handler(PermisoDenegado)
+async def manejar_permiso(_: Request, exc: PermisoDenegado) -> JSONResponse:
+    """403 — la identidad es válida pero el rol no alcanza."""
+    return JSONResponse(
+        status_code=status.HTTP_403_FORBIDDEN,
         content=respuestas.error(exc.mensaje, exc.codigo_error, exc.detalles),
     )
 
@@ -202,6 +244,7 @@ async def manejar_error_no_previsto(_: Request, exc: Exception) -> JSONResponse:
 # ==========================================================================
 # RUTAS
 # ==========================================================================
+app.include_router(autenticacion.router, prefix=settings.API_PREFIJO)
 app.include_router(sistema.router, prefix=settings.API_PREFIJO)
 
 # --------------------------------------------------------------------------
@@ -209,8 +252,8 @@ app.include_router(sistema.router, prefix=settings.API_PREFIJO)
 # --------------------------------------------------------------------------
 # Cada módulo se incorporará con una línea como la anterior:
 #     app.include_router(clientes.router, prefix=settings.API_PREFIJO)
-# Los routers de autenticación, los ocho módulos CRUD, /analitica y /ml
-# quedan pendientes por indicación expresa del alcance de esta actividad.
+# La gestión de usuarios, los ocho módulos CRUD, /analitica y /ml quedan
+# pendientes por indicación expresa del alcance de esta actividad.
 
 
 @app.get("/", include_in_schema=False)

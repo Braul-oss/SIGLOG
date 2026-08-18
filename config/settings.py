@@ -98,7 +98,25 @@ COLECCIONES_ANALITICAS: tuple[str, ...] = (
     "clusters_rutas",
 )
 
-TODAS_LAS_COLECCIONES: tuple[str, ...] = COLECCIONES_OPERATIVAS + COLECCIONES_ANALITICAS
+# --------------------------------------------------------------------------
+# Colecciones del SISTEMA (no del dominio logístico)
+# --------------------------------------------------------------------------
+# `usuarios` no aparece en el §11 porque el documento dejó la autenticación
+# como regla pendiente (RNP-11). Al resolverse con la opción (b) —roles
+# Admin/Despachador/Consulta— hace falta almacenarlos.
+#
+# Se declara en un grupo APARTE y no dentro de las operativas por una razón
+# concreta: `etl/extraccion.py` recorre COLECCIONES_OPERATIVAS para volcarlo
+# todo a pandas y a CSV en data/raw/. Incluir aquí a los usuarios haría que
+# el ETL exportara credenciales y hashes de contraseña. Separarlas lo impide
+# por diseño, no por disciplina.
+COLECCIONES_SISTEMA: tuple[str, ...] = (
+    "usuarios",            # autenticación y control de acceso (RNP-11 opción b)
+)
+
+TODAS_LAS_COLECCIONES: tuple[str, ...] = (
+    COLECCIONES_OPERATIVAS + COLECCIONES_ANALITICAS + COLECCIONES_SISTEMA
+)
 
 # Colecciones que produce la actividad PA-1 (catálogos maestros)
 COLECCIONES_CATALOGO: tuple[str, ...] = ("clientes", "vehiculos", "operadores", "rutas")
@@ -183,6 +201,39 @@ CORS_ORIGENES: tuple[str, ...] = tuple(
     ).split(",")
     if origen.strip()
 )
+
+
+# ==========================================================================
+# SEGURIDAD Y CONTROL DE ACCESO  (RNP-11 resuelta: opción b)
+# ==========================================================================
+# Los roles salen de los actores del §3 y del §12.3. La equivalencia:
+#     ADMINISTRADOR  →  "Administrador / Coordinador logístico" (§3)
+#     DESPACHADOR    →  "Despachador / Capturista" (§3)
+#     ANALISTA       →  "Analista / Directivo" (§3); es el rol que §12.3
+#                       llama "Consulta". Se usa el nombre del actor porque
+#                       describe lo que hace, no solo lo que se le niega.
+ROL_ADMINISTRADOR: str = "ADMINISTRADOR"
+ROL_DESPACHADOR: str = "DESPACHADOR"
+ROL_ANALISTA: str = "ANALISTA"
+
+CATALOGO_ROLES: tuple[str, ...] = (
+    ROL_ADMINISTRADOR,
+    ROL_DESPACHADOR,
+    ROL_ANALISTA,
+)
+
+# Clave de firma de los JWT. NUNCA debe quedarse en el valor por defecto
+# fuera de desarrollo: quien la conozca puede fabricar tokens válidos.
+# Generar una con:  python -c "import secrets; print(secrets.token_hex(32))"
+JWT_CLAVE_POR_DEFECTO: str = "clave-de-desarrollo-NO-USAR-FUERA-DE-DESARROLLO"
+JWT_CLAVE: str = os.getenv("JWT_CLAVE", JWT_CLAVE_POR_DEFECTO)
+JWT_ALGORITMO: str = os.getenv("JWT_ALGORITMO", "HS256")
+JWT_MINUTOS_EXPIRACION: int = int(os.getenv("JWT_MINUTOS_EXPIRACION", "480"))
+
+
+def jwt_clave_es_insegura() -> bool:
+    """True si la clave de firma sigue siendo la de desarrollo."""
+    return JWT_CLAVE == JWT_CLAVE_POR_DEFECTO
 
 
 # --------------------------------------------------------------------------
