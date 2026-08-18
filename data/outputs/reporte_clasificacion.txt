@@ -128,8 +128,8 @@
 ==============================================================================
   5 · MODELOS GUARDADOS
 ==============================================================================
-  PLANEACION  Random Forest           ml\modelos_entrenados\clasificacion_retraso_planeacion.joblib
-  EN_RUTA     Random Forest           ml\modelos_entrenados\clasificacion_retraso_en_ruta.joblib
+  PLANEACION  Random Forest           ml\modelos_guardados\clasificacion_retraso_planeacion.joblib
+  EN_RUTA     Random Forest           ml\modelos_guardados\clasificacion_retraso_en_ruta.joblib
 
   Ficha de cada modelo registrada en la colección `modelos_ml`.
 

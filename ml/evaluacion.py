@@ -74,7 +74,7 @@ from config.mongo_conexion import obtener_bd
 SEMILLA: int = 42
 PROPORCION_PRUEBA: float = 0.2
 
-CARPETA_MODELOS = RAIZ / "ml" / "modelos_entrenados"
+CARPETA_MODELOS = RAIZ / "ml" / "modelos_guardados"   # §15.3 del doc. técnico
 
 # --------------------------------------------------------------------------
 # ESCENARIOS DE PREDICCIÓN
