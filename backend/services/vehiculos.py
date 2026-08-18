@@ -13,10 +13,13 @@ RN-V2  La placa es única en la flotilla. Sí se puede corregir —un error de
        la de otra unidad.
 
 RN-V3  (RN-04 del documento) Un vehículo tiene UNA sola ruta y una ruta UN
-       solo vehículo. Al asignar se comprueba que la ruta esté libre, y se
-       actualizan los dos extremos de la relación: si solo se escribiera
-       uno, la ruta seguiría diciendo que la cubre un vehículo que ya no
-       la tiene.
+       solo vehículo. Se comprueba en LOS DOS SENTIDOS: que la ruta esté
+       libre y que el vehículo no cubra ya otra. Sin la segunda, mover un
+       vehículo de la ruta A a la B dejaba a la A sin unidad en silencio,
+       que es exactamente el estado que RN-R6 impide al dar de baja una
+       ruta. Además se actualizan los dos extremos de la relación: si solo
+       se escribiera uno, la ruta seguiría diciendo que la cubre un
+       vehículo que ya no la tiene.
 
 RN-V4  No se puede dar de baja un vehículo con ruta asignada: la ruta
        quedaría sin unidad y el viaje siguiente no podría salir. Hay que
@@ -288,6 +291,7 @@ def asignar_ruta(bd: Database, identificador: str,
     if ruta is None:
         raise ReglaDeNegocio(f"No existe la ruta con identificador '{ruta_id}'.")
 
+    # RN-04, primer sentido: la ruta no puede estar tomada por otro vehículo.
     ocupante = repositorio.vehiculo_de_la_ruta(objeto_ruta,
                                                excluir=vehiculo["_id"])
     if ocupante:
@@ -299,8 +303,21 @@ def asignar_ruta(bd: Database, identificador: str,
             detalles=[{"ruta": ruta.get("codigo_ruta"),
                        "vehiculo_actual": ocupante.get("codigo_vehiculo")}])
 
+    # RN-04, segundo sentido: el vehículo tampoco puede saltar de una ruta a
+    # otra sin liberarse antes. Permitirlo dejaba la ruta anterior SIN
+    # vehículo en silencio, que es justo el estado que RN-R6 impide al dar
+    # de baja una ruta. La regla debe valer en los dos sentidos o no vale.
     if ruta_anterior and ruta_anterior != objeto_ruta:
-        repositorio.sincronizar_ruta(ruta_anterior, None)
+        anterior = repositorio.ruta(ruta_anterior)
+        codigo_anterior = anterior.get("codigo_ruta") if anterior else "?"
+        raise ReglaDeNegocio(
+            f"El vehículo {vehiculo.get('codigo_vehiculo')} ya cubre la ruta "
+            f"{codigo_anterior} (RN-04: un vehículo, una ruta). Desasígnalo "
+            f"primero, o {codigo_anterior} quedaría sin unidad.",
+            regla="V3",
+            detalles=[{"ruta_actual": codigo_anterior,
+                       "ruta_solicitada": ruta.get("codigo_ruta")}])
+
     repositorio.sincronizar_ruta(objeto_ruta, vehiculo["_id"])
 
     return _publico(repositorio.actualizar(

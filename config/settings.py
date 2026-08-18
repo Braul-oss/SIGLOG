@@ -232,6 +232,19 @@ DIAS_AVISO_LICENCIA: int = 30
 OPERADOR_ROTA_VEHICULO: bool = True
 
 
+# §11.4 — Rutas.
+# Las zonas son la dimensión geográfica del DW y una variable del
+# clustering; el catálogo es el que la operación ya usa.
+CATALOGO_ZONA: tuple[str, ...] = ("NORTE", "SUR", "ORIENTE", "PONIENTE")
+
+# RNP-06 (días de operación) se resuelve con la opción (b): días fijos de
+# la semana. Es lo que la simulación implementó —cada ruta declara sus
+# días— y lo que permite analizar la saturación por día.
+CATALOGO_DIAS_OPERACION: tuple[str, ...] = (
+    "LUNES", "MARTES", "MIERCOLES", "JUEVES", "VIERNES", "SABADO", "DOMINGO",
+)
+
+
 # --------------------------------------------------------------------------
 # REGLAS AÚN PENDIENTES (no se convierten en enum hasta ser aprobadas)
 #   RNP-05  tipo de mantenimiento (PREVENTIVO / CORRECTIVO)

@@ -157,6 +157,18 @@ Todos bajo el prefijo `/api/v1` (§12.2 del documento técnico).
 | PATCH | `/operadores/{id}/estado` | admin o despachador | Activar o desactivar |
 | DELETE | `/operadores/{id}` | admin | Baja lógica |
 | PATCH | `/operadores/{id}/reactivar` | admin | Reactivar la ficha |
+| GET | `/rutas` | sesión | Listar (filtros por zona y sin vehículo) |
+| GET | `/rutas/catalogos` · `/resumen` | sesión | Catálogos y cobertura |
+| GET | `/rutas/{id}` | sesión | Detalle con sus paradas |
+| GET | `/rutas/{id}/analisis` | sesión | Perfil del ETL y grupo del clustering |
+| POST | `/rutas` | admin | Crear |
+| PUT | `/rutas/{id}` | admin | Actualizar la cabecera |
+| POST | `/rutas/{id}/paradas` | admin | Agregar una parada |
+| PUT | `/rutas/{id}/paradas` | admin | Reemplazar el itinerario |
+| DELETE | `/rutas/{id}/paradas/{orden}` | admin | Quitar una parada |
+| PUT | `/rutas/{id}/asignar-vehiculo` | admin | Asignar o quitar el vehículo |
+| DELETE | `/rutas/{id}` | admin | Baja lógica |
+| PATCH | `/rutas/{id}/reactivar` | admin | Reactivar |
 
 En el módulo de clientes el permiso **no es uniforme**: consultar lo puede
 hacer cualquier sesión —el despachador necesita ver clientes para registrar
@@ -204,6 +216,22 @@ administrador no pueda dejar el sistema sin quien lo administre:
 | RN-O4 | El sistema avisa de las licencias por vencer con antelación |
 | RN-O5 | No se da de baja a quien tiene viajes sin cerrar |
 | RN-O6 | Las entregas y la puntualidad no se editan desde el API |
+
+**Reglas del módulo de rutas:**
+
+| Regla | Qué impide |
+|---|---|
+| RN-R1 | El código RUT-NNN lo genera el sistema y es inmutable |
+| RN-R2 | Los totales se recalculan a partir de las paradas, nunca se capturan |
+| RN-R3 | Paradas numeradas 1..N sin huecos, y al menos una |
+| RN-R4 | El cliente de la parada existe, está activo y tiene esa dirección |
+| RN-R5 | Un cliente no se repite dentro de la misma ruta |
+| RN-R6 | No se da de baja una ruta con vehículo o con viajes sin cerrar |
+
+**RN-04 (vehículo ↔ ruta) vale en los dos sentidos:** una ruta no puede tener
+dos vehículos, y un vehículo no puede saltar de una ruta a otra sin liberarse
+antes. Se implementa una sola vez, en el servicio de vehículos, y el endpoint
+`/rutas/{id}/asignar-vehiculo` delega en él.
 
 > **Nota ética (§11.3).** El endpoint `/operadores/{id}/desempenio` incluye en
 > su respuesta la advertencia que pide el documento técnico: estas cifras
@@ -283,6 +311,7 @@ python tests/test_usuarios.py       # gestión de usuarios (28 pruebas)
 python tests/test_clientes.py       # módulo clientes (27 pruebas)
 python tests/test_vehiculos.py      # módulo vehículos (30 pruebas)
 python tests/test_operadores.py     # módulo operadores (29 pruebas)
+python tests/test_rutas.py          # módulo rutas (34 pruebas)
 
 # o con pytest
 pytest tests/ -v
@@ -337,8 +366,8 @@ Frontend → FastAPI → Service → analytics/ · ml/ → MongoDB → respuesta
 | Backend base (API) | Completo |
 | Autenticación y roles (JWT) | Completo |
 | Gestión de usuarios y roles | Completo |
-| Módulos CRUD: clientes, vehículos, operadores | Completo |
-| Módulos CRUD restantes (5) | Pendiente |
+| Módulos CRUD: clientes, vehículos, operadores, rutas | Completo |
+| Módulos CRUD restantes (4) | Pendiente |
 | Endpoints de analítica y ML | Pendiente |
 | Frontend | Pendiente |
 | Reportes PDF | Pendiente |
