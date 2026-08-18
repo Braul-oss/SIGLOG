@@ -50,8 +50,8 @@ from pymongo.errors import PyMongoError
 
 from backend.routers import (analitica, autenticacion, clientes, combustible,
                              entregas, incidentes, mantenimientos, ml,
-                             operadores, rutas, sistema, usuarios, vehiculos,
-                             viajes, vistas)
+                             operadores, reportes, rutas, sistema, usuarios,
+                             vehiculos, viajes, vistas)
 from backend.schemas.comunes import RespuestaError
 from backend.utils import respuestas
 from backend.utils.errores import ErrorSIGLOG
@@ -263,6 +263,7 @@ app.include_router(combustible.router, prefix=settings.API_PREFIJO)
 app.include_router(mantenimientos.router, prefix=settings.API_PREFIJO)
 app.include_router(analitica.router, prefix=settings.API_PREFIJO)
 app.include_router(ml.router, prefix=settings.API_PREFIJO)
+app.include_router(reportes.router, prefix=settings.API_PREFIJO)
 app.include_router(sistema.router, prefix=settings.API_PREFIJO)
 
 # --------------------------------------------------------------------------
@@ -283,7 +284,7 @@ app.include_router(vistas.router)
 # --------------------------------------------------------------------------
 # PUNTOS DE EXTENSIÓN — actividades posteriores
 # --------------------------------------------------------------------------
-# Queda pendiente la generación de reportes PDF (§18.4).
+# Quedan los manuales técnico y de usuario.
 
 
 # ==========================================================================

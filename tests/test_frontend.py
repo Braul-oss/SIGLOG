@@ -506,6 +506,111 @@ def test_la_edicion_no_ofrece_lo_que_el_sistema_calcula():
         ", ".join(encontrados))
 
 
+def test_la_interfaz_ofrece_exactamente_lo_que_el_api_permite():
+    """
+    Cada acción, contra el API real, con cada rol.
+
+    Se comprueban las dos direcciones, y las dos importan:
+
+    - **Más laxa** sería enseñar un botón que siempre responde 403. El
+      usuario lo pulsa, recibe un error y deja de fiarse de la pantalla.
+    - **Más estricta** sería esconder algo que el rol sí puede hacer. Es
+      peor, porque no deja rastro: nadie reporta un botón que nunca vio.
+      Justo eso pasaba con el despachador y los servicios de mantenimiento.
+
+    Las peticiones van contra identificadores inexistentes y con el cuerpo
+    vacío: la comprobación de rol ocurre antes que la de esquema, así que
+    el 403 llega igual y no se escribe nada en la base.
+    """
+    INEXISTENTE = "0" * 24
+    desajustes: list[str] = []
+
+    for usuario, rol in (("admin", settings.ROL_ADMINISTRADOR),
+                         ("despachador", settings.ROL_DESPACHADOR),
+                         ("analista", settings.ROL_ANALISTA)):
+        cliente = cliente_http()
+        entrar(cliente, usuario)
+
+        for modulo in catalogo.MODULOS:
+            if not catalogo.puede_leer(modulo, rol):
+                continue                 # ya lo cubre la matriz de acceso
+            ofrecidas = {a.clave for a in catalogo.acciones_permitidas(modulo, rol)}
+
+            for accion in modulo.acciones:
+                if accion.metodo == "GET":
+                    continue             # consultar no cambia nada
+                destino = (API + accion.ruta[3:]
+                           if accion.ruta.startswith("/../")
+                           else API + modulo.recurso +
+                                accion.ruta.replace("{id}", INEXISTENTE))
+                respuesta = cliente.request(accion.metodo, destino, json={})
+                prohibida = respuesta.status_code == 403
+                ofrecida = accion.clave in ofrecidas
+
+                if ofrecida and prohibida:
+                    desajustes.append(
+                        f"{rol}: la interfaz ofrece «{accion.etiqueta}» en "
+                        f"{modulo.clave}, pero el API responde 403")
+                if not ofrecida and not prohibida:
+                    desajustes.append(
+                        f"{rol}: la interfaz esconde «{accion.etiqueta}» en "
+                        f"{modulo.clave}, pero el API sí lo permite "
+                        f"(respondió {respuesta.status_code})")
+
+    assert not desajustes, "\n".join(desajustes)
+
+
+def test_el_despachador_atiende_el_taller():
+    """
+    El caso concreto que motivó los permisos por acción.
+
+    Programar un servicio es planificación y la decide el administrador.
+    Registrar que se hizo, o constatar que venció, lo hace quien ve pasar
+    la unidad por el taller.
+    """
+    c = cliente_http()
+    entrar(c, "despachador")
+    html = c.get("/modulos/mantenimientos").text
+
+    assert 'id="btn-alta"' not in html, "programar es del administrador"
+    assert "Realizar" in html and "Declarar vencido" in html
+    # Y no se le dice que está en solo consulta, porque no lo está
+    assert "Solo consulta" not in html
+
+    # El API coincide: le deja pasar la comprobación de rol
+    for accion in ("realizar", "vencer"):
+        respuesta = c.patch(f"{API}/mantenimientos/{'0' * 24}/{accion}", json={})
+        assert respuesta.status_code != 403, accion
+
+
+def test_lo_que_no_se_puede_usar_no_se_manda_a_la_pagina():
+    """
+    El recorte se hace en el servidor.
+
+    Si la página recibiera la lista completa y ocultara con JavaScript,
+    bastaría con mirar el código fuente para inventariar lo que existe, y
+    cualquier fallo en esa lógica dejaría botones que responden 403.
+    """
+    c = cliente_http()
+    entrar(c, "despachador")
+    datos = json_del_modulo(c.get("/modulos/clientes").text)
+
+    # El despachador solo consulta clientes: no debe llegarle ni el
+    # formulario de alta ni el de edición
+    assert datos["campos_alta"] == []
+    assert datos["campos_edicion"] == []
+    assert datos["permite_baja"] is False
+    assert datos["acciones"] == []
+
+    # Y al administrador sí
+    admin = cliente_http()
+    entrar(admin, "admin")
+    datos = json_del_modulo(admin.get("/modulos/clientes").text)
+    assert datos["campos_alta"], "el administrador sí da de alta clientes"
+    assert datos["campos_edicion"]
+    assert datos["permite_baja"] is True
+
+
 # ==========================================================================
 # ROLES
 # ==========================================================================
@@ -597,17 +702,37 @@ def test_el_menu_solo_ofrece_lo_que_se_puede_abrir():
 
 def test_el_despachador_escribe_donde_le_toca():
     """
-    Los permisos no son uniformes: el despachador mueve la operación del día
-    pero no da de alta clientes ni vehículos.
+    Los permisos no son uniformes, y tampoco son de todo o nada.
+
+    El despachador mueve la operación del día: da de alta viajes, entregas,
+    incidentes y cargas. En los catálogos no da de alta ni edita —eso es
+    del administrador—, pero sí ejecuta los actos operativos que viven
+    dentro de ellos: marcar que un camión entró al taller o que un operador
+    causó baja temporal es despacho, no administración del catálogo.
+
+    Por eso «Solo consulta» solo aparece donde de verdad no puede hacer
+    nada: clientes y rutas.
     """
     c = cliente_http()
     entrar(c, "despachador")
+
     for clave in ("viajes", "entregas", "incidentes", "combustible"):
         assert 'id="btn-alta"' in c.get(f"/modulos/{clave}").text, clave
+
+    # En los catálogos no da de alta, en ninguno
     for clave in ("clientes", "vehiculos", "operadores", "rutas"):
+        assert 'id="btn-alta"' not in c.get(f"/modulos/{clave}").text, clave
+
+    # Pero sí cambia el estado operativo de unidades y conductores
+    for clave in ("vehiculos", "operadores"):
         html = c.get(f"/modulos/{clave}").text
-        assert 'id="btn-alta"' not in html, clave
-        assert "Solo consulta" in html, clave
+        assert "Cambiar estado" in html, clave
+        assert "Solo consulta" not in html, (
+            f"{clave}: no está en solo consulta, puede cambiar el estado")
+
+    # Y donde no puede hacer nada, se le dice
+    for clave in ("clientes", "rutas"):
+        assert "Solo consulta" in c.get(f"/modulos/{clave}").text, clave
 
 
 def test_lo_oculto_en_la_interfaz_sigue_prohibido_en_el_api():
@@ -674,6 +799,12 @@ if __name__ == "__main__":
          test_el_despachador_escribe_donde_le_toca),
         ("Lo oculto sigue prohibido en el API",
          test_lo_oculto_en_la_interfaz_sigue_prohibido_en_el_api),
+        ("La interfaz ofrece exactamente lo que el API permite",
+         test_la_interfaz_ofrece_exactamente_lo_que_el_api_permite),
+        ("El despachador atiende el taller",
+         test_el_despachador_atiende_el_taller),
+        ("Lo que no se puede usar no se manda a la página",
+         test_lo_que_no_se_puede_usar_no_se_manda_a_la_pagina),
     ]
 
     print("=" * 70)

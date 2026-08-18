@@ -8,6 +8,12 @@
   Periodo analizado: <strong>{{ periodo.etiqueta }}</strong>.{% endif %}
 {% endblock %}
 
+{% block acciones_cabecera %}
+  <a href="{{ prefijo_api }}/reportes/flotilla" target="_blank" rel="noopener"
+     class="btn btn-sm btn-primary">
+    <i class="bi bi-file-earmark-pdf"></i> Informe de flotilla</a>
+{% endblock %}
+
 {% block contenido %}
 
 {% if aviso %}

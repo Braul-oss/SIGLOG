@@ -356,7 +356,7 @@ VEHICULOS = Modulo(
     ),
     acciones=(
         Accion("estado", "Cambiar estado", "PATCH", "/{id}/estado",
-               icono="bi-toggle-on", campos=(
+               icono="bi-toggle-on", roles=OPERACION, campos=(
                    Campo("estado_operativo", "Nuevo estado", tipo="select",
                          requerido=True,
                          opciones=settings.CATALOGO_ESTADO_VEHICULO),
@@ -419,7 +419,7 @@ OPERADORES = Modulo(
     ),
     acciones=(
         Accion("estado", "Cambiar estado", "PATCH", "/{id}/estado",
-               icono="bi-toggle-on", campos=(
+               icono="bi-toggle-on", roles=OPERACION, campos=(
                    Campo("estado", "Nuevo estado", tipo="select",
                          requerido=True,
                          opciones=settings.CATALOGO_ESTADO_OPERADOR),
