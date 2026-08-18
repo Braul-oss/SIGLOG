@@ -47,8 +47,8 @@ from fastapi.responses import JSONResponse, RedirectResponse
 from pymongo.errors import PyMongoError
 
 from backend.routers import (autenticacion, clientes, combustible, entregas,
-                             incidentes, operadores, rutas, sistema, usuarios,
-                             vehiculos, viajes)
+                             incidentes, mantenimientos, operadores, rutas,
+                             sistema, usuarios, vehiculos, viajes)
 from backend.schemas.comunes import RespuestaError
 from backend.utils import respuestas
 from backend.utils.errores import ErrorSIGLOG
@@ -256,15 +256,15 @@ app.include_router(viajes.router, prefix=settings.API_PREFIJO)
 app.include_router(entregas.router, prefix=settings.API_PREFIJO)
 app.include_router(incidentes.router, prefix=settings.API_PREFIJO)
 app.include_router(combustible.router, prefix=settings.API_PREFIJO)
+app.include_router(mantenimientos.router, prefix=settings.API_PREFIJO)
 app.include_router(sistema.router, prefix=settings.API_PREFIJO)
 
 # --------------------------------------------------------------------------
 # PUNTOS DE EXTENSIÓN — actividades posteriores
 # --------------------------------------------------------------------------
-# Cada módulo se incorporará con una línea como la anterior:
-#     app.include_router(clientes.router, prefix=settings.API_PREFIJO)
-# Los ocho módulos CRUD del dominio logístico, /analitica y /ml quedan
-# pendientes por indicación expresa del alcance de esta actividad.
+# Los ocho módulos obligatorios del dominio logístico están completos.
+# Quedan pendientes /analitica y /ml, que expondrán la capa analítica ya
+# construida reutilizando analytics/ y ml/, sin duplicar su lógica.
 
 
 @app.get("/", include_in_schema=False)

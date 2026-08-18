@@ -307,9 +307,49 @@ ADVERTENCIA_RECALCULO_ETA: str = (
 )
 
 
+# §11.9 — Mantenimientos.
+# RNP-05 se resuelve con la opción (b): preventivo y correctivo, que es lo
+# que la simulación implementó y lo que distingue el servicio planificado
+# de la reparación por falla.
+TIPO_MANTENIMIENTO_PREVENTIVO: str = "PREVENTIVO"
+TIPO_MANTENIMIENTO_CORRECTIVO: str = "CORRECTIVO"
+CATALOGO_TIPO_MANTENIMIENTO: tuple[str, ...] = (
+    TIPO_MANTENIMIENTO_PREVENTIVO,
+    TIPO_MANTENIMIENTO_CORRECTIVO,
+)
+
+ESTATUS_MTTO_PROGRAMADO: str = "PROGRAMADO"
+ESTATUS_MTTO_REALIZADO: str = "REALIZADO"
+ESTATUS_MTTO_VENCIDO: str = "VENCIDO"
+CATALOGO_ESTATUS_MANTENIMIENTO: tuple[str, ...] = (
+    ESTATUS_MTTO_PROGRAMADO,
+    ESTATUS_MTTO_REALIZADO,
+    ESTATUS_MTTO_VENCIDO,
+)
+
+# Un mantenimiento vencido SÍ se puede realizar: es precisamente lo que
+# devuelve el vehículo a operación. Lo que no existe es el camino de
+# vuelta desde REALIZADO.
+TRANSICIONES_ESTATUS_MANTENIMIENTO: dict[str, tuple[str, ...]] = {
+    ESTATUS_MTTO_PROGRAMADO: (ESTATUS_MTTO_REALIZADO, ESTATUS_MTTO_VENCIDO),
+    ESTATUS_MTTO_VENCIDO: (ESTATUS_MTTO_REALIZADO,),
+    ESTATUS_MTTO_REALIZADO: (),
+}
+
+# RNP-04 — periodicidad. El documento recomendaba la opción (c), "lo
+# primero que ocurra entre calendario y kilometraje", pero la simulación
+# implementó la (a): cada 30 días de calendario, y sobre esos datos se
+# construyeron el DW y `dias_desde_mantenimiento`. Se fija por calendario
+# para no contradecir lo que el proyecto ya opera; pasar a la (c) sería un
+# cambio de regla, no un ajuste de constante.
+DIAS_PERIODICIDAD_MANTENIMIENTO: int = 30
+
+# Días de anticipación con que RF-16 alerta de un mantenimiento próximo.
+DIAS_AVISO_MANTENIMIENTO: int = 7
+
+
 # --------------------------------------------------------------------------
 # REGLAS AÚN PENDIENTES (no se convierten en enum hasta ser aprobadas)
-#   RNP-05  tipo de mantenimiento (PREVENTIVO / CORRECTIVO)
 #   RNP-13  ventanas horarias comprometidas con el cliente
 # --------------------------------------------------------------------------
 

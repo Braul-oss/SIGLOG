@@ -187,6 +187,12 @@ Todos bajo el prefijo `/api/v1` (§12.2 del documento técnico).
 | GET | `/combustible` · `/catalogos` · `/{id}` | sesión | Consultar cargas |
 | GET | `/combustible/resumen` | sesión | Consumo y costo agregado |
 | POST | `/combustible` | admin o despachador | Registrar una carga |
+| GET | `/mantenimientos` · `/catalogos` · `/resumen` · `/{id}` | sesión | Consultar mantenimientos |
+| GET | `/mantenimientos/pendientes` | sesión | Vehículos por atender (RF-16) |
+| POST | `/mantenimientos` | administrador | Programar un servicio |
+| PUT | `/mantenimientos/{id}` | administrador | Editar mientras no se realice |
+| PATCH | `/mantenimientos/{id}/realizar` | admin o despachador | Registrar el servicio efectuado |
+| PATCH | `/mantenimientos/{id}/vencer` | admin o despachador | Declararlo vencido |
 
 En el módulo de clientes el permiso **no es uniforme**: consultar lo puede
 hacer cualquier sesión —el despachador necesita ver clientes para registrar
@@ -293,6 +299,28 @@ administrador no pueda dejar el sistema sin quien lo administre:
 | RN-F6 | Los litros no superan la capacidad del tanque |
 | RN-F7 | El combustible debe ser el de la unidad: no se le pone gasolina a un diésel |
 | RN-F8 | La carga actualiza el odómetro del vehículo |
+
+**Reglas del módulo de mantenimiento:**
+
+| Regla | Qué impide |
+|---|---|
+| RN-M1 | El folio MTO-AAAAMMDD-NNNN lo genera el sistema |
+| RN-M2 | PROGRAMADO → REALIZADO o VENCIDO, y VENCIDO → REALIZADO; de REALIZADO no se sale |
+| RN-M3 | Una unidad no tiene dos servicios abiertos a la vez |
+| RN-M4 | `duracion_dias` y `proximo_mantenimiento_fecha` se calculan, no se capturan |
+| RN-M5 | Realizar el servicio escribe las fechas de mantenimiento del vehículo |
+| RN-M6 | Un servicio vencido saca la unidad de operación; realizarlo la devuelve solo si no le quedan otros vencidos |
+| RN-M7 | No se da por vencido un servicio antes de su fecha programada |
+
+> **RN-M5 cierra la promesa de RN-V6.** La ficha del vehículo prohíbe capturar
+> `fecha_ultimo_mantenimiento` y `fecha_proximo_mantenimiento` porque "se derivan
+> de la colección `mantenimientos`". Este módulo es donde se derivan.
+>
+> La periodicidad de RNP-04 se aplica **por calendario** (30 días): es lo que la
+> simulación implementó y sobre lo que se construyeron el DW y la variable
+> `dias_desde_mantenimiento`. El documento recomendaba la opción (c) —lo primero
+> entre calendario y kilometraje—; pasar a ella sería un cambio de regla que hay
+> que acordar, no un ajuste de constante.
 
 > **RN-I5 es la regla que protege a los modelos.** El retraso se mide como
 > `real − hora_estimada_llegada`. Si un incidente sobrescribiera esa hora, la
@@ -406,6 +434,7 @@ python tests/test_viajes.py         # módulo viajes (26 pruebas)
 python tests/test_entregas.py       # módulo entregas (26 pruebas)
 python tests/test_incidentes.py     # módulo incidentes (22 pruebas)
 python tests/test_combustible.py    # módulo combustible (20 pruebas)
+python tests/test_mantenimientos.py # módulo mantenimiento (21 pruebas)
 
 # o con pytest
 pytest tests/ -v
@@ -460,8 +489,7 @@ Frontend → FastAPI → Service → analytics/ · ml/ → MongoDB → respuesta
 | Backend base (API) | Completo |
 | Autenticación y roles (JWT) | Completo |
 | Gestión de usuarios y roles | Completo |
-| Módulos: clientes, vehículos, operadores, rutas, viajes, entregas, incidentes, combustible | Completo |
-| Módulo restante: mantenimiento | Pendiente |
+| Módulos del dominio: clientes, vehículos, operadores, rutas, viajes, entregas, incidentes, combustible, mantenimiento | Completo |
 | Endpoints de analítica y ML | Pendiente |
 | Frontend | Pendiente |
 | Reportes PDF | Pendiente |
