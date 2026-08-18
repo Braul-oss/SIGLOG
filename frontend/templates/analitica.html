@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% set seccion = 'analitica' %}
+{% block titulo %}Analítica{% endblock %}
+{% block encabezado %}Analítica{% endblock %}
+{% block subtitulo %}
+  Las consultas agregadas del sistema. Cada una viene acompañada de su
+  lectura: eso es lo que convierte una gráfica en conocimiento.
+{% endblock %}
+
+{% block contenido %}
+
+<div class="sl-nota">
+  <i class="bi bi-info-circle"></i>
+  Todas estas cifras se calculan sobre las entregas de calidad
+  <code>OK</code> del data warehouse: las de captura omitida no tienen retraso
+  medible y las canceladas nunca ocurrieron.
+</div>
+
+<section class="sl-panel">
+  <header class="sl-panel-cabecera">
+    <h2>Rutas más utilizadas</h2>
+    <p>Ordenadas por volumen. La barra se marca en rojo cuando la ruta
+       promedia más de {{ umbral }} minutos de retraso: esas pesan el doble,
+       porque su impacto se multiplica por las entregas que mueven.</p>
+  </header>
+  <div class="sl-controles">
+    <label class="form-label mb-0" for="top">Mostrar</label>
+    <select class="form-select form-select-sm" id="top" style="width:auto">
+      <option value="5">5 rutas</option>
+      <option value="10" selected>10 rutas</option>
+      <option value="20">20 rutas</option>
+    </select>
+  </div>
+  <canvas id="g-rutas" height="130"></canvas>
+  <p class="sl-lectura" id="l-rutas">Cargando…</p>
+  <div class="sl-tabla-envoltura">
+    <table class="table table-sm sl-tabla">
+      <thead><tr>
+        <th>Ruta</th><th>Zona</th><th class="text-end">Entregas</th>
+        <th class="text-end">Viajes</th><th class="text-end">Retraso medio</th>
+        <th class="text-end">% retrasadas</th>
+      </tr></thead>
+      <tbody id="tabla-rutas"></tbody>
+    </table>
+  </div>
+</section>
+
+<section class="sl-panel">
+  <header class="sl-panel-cabecera">
+    <h2>Causas del retraso (Pareto)</h2>
+    <p>Las barras rojas son los «pocos vitales»: las causas necesarias para
+       llegar al 80% acumulado, <strong>incluida la que cruza esa línea</strong>.
+       Marcar solo las que quedan por debajo dejaría fuera a la causa dominante
+       cuando una sola ya lo supera.</p>
+  </header>
+  <canvas id="g-causas" height="130"></canvas>
+  <p class="sl-lectura" id="l-causas">Cargando…</p>
+</section>
+
+<section class="sl-panel">
+  <header class="sl-panel-cabecera">
+    <h2>Saturación por franja y día</h2>
+    <p>El data warehouse guarda la franja, no la hora exacta: es el grano al
+       que el diseño decidió analizar la saturación. La celda más oscura es
+       la de mayor carga.</p>
+  </header>
+  <div class="sl-tabla-envoltura">
+    <table class="table table-sm sl-mapa-calor">
+      <thead><tr><th>Franja</th><th>Lun</th><th>Mar</th><th>Mié</th>
+        <th>Jue</th><th>Vie</th><th>Sáb</th><th>Dom</th>
+        <th class="text-end">Retraso medio</th></tr></thead>
+      <tbody id="tabla-saturacion">
+        <tr><td colspan="9" class="sl-cargando">Cargando…</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="sl-lectura" id="l-saturacion">Cargando…</p>
+</section>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/analitica.js"></script>
+{% endblock %}

@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block titulo %}Error {{ codigo }}{% endblock %}
+{% block encabezado %}{{ titulo_error }}{% endblock %}
+{% block subtitulo %}Error {{ codigo }}{% endblock %}
+
+{% block contenido %}
+<div class="sl-panel sl-vacio">
+  <i class="bi bi-signpost-2"></i>
+  <h3>{{ titulo_error }}</h3>
+  <p>{{ detalle }}</p>
+  <a href="/panel" class="btn btn-primary btn-sm">
+    <i class="bi bi-house"></i> Volver al panel</a>
+</div>
+{% endblock %}

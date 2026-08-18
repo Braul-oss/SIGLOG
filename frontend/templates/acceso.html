@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block titulo %}Acceso{% endblock %}
+
+{% block contenido %}
+<div class="sl-acceso">
+  <div class="sl-acceso-tarjeta">
+    <div class="sl-acceso-marca">
+      <span class="sl-marca-icono"><i class="bi bi-diagram-3"></i></span>
+      <h1>SIG-LOG</h1>
+      <p>Sistema Integral de Gestión de Transporte y Logística</p>
+    </div>
+
+    {% if error %}
+    <div class="alert alert-danger py-2 small" role="alert">
+      <i class="bi bi-exclamation-triangle"></i> {{ error }}
+    </div>
+    {% endif %}
+
+    <form method="post" action="/entrar" autocomplete="on">
+      <input type="hidden" name="destino" value="{{ destino }}">
+
+      <div class="mb-3">
+        <label class="form-label" for="usuario">Usuario</label>
+        <input class="form-control" id="usuario" name="usuario" required
+               autofocus autocomplete="username">
+      </div>
+
+      <div class="mb-4">
+        <label class="form-label" for="contrasena">Contraseña</label>
+        <input class="form-control" id="contrasena" name="contrasena"
+               type="password" required autocomplete="current-password">
+      </div>
+
+      <button class="btn btn-primary w-100" type="submit">
+        <i class="bi bi-box-arrow-in-right"></i> Entrar
+      </button>
+    </form>
+
+    <p class="sl-acceso-nota">
+      Los datos del sistema son <strong>simulados</strong>, con fines
+      académicos.
+    </p>
+  </div>
+</div>
+{% endblock %}

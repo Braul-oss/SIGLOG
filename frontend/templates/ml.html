@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% set seccion = 'ml' %}
+{% block titulo %}Machine Learning{% endblock %}
+{% block encabezado %}Machine Learning{% endblock %}
+{% block subtitulo %}
+  Los modelos entrenados con el histórico, aplicados a la operación de hoy.
+{% endblock %}
+
+{% block contenido %}
+
+<section class="sl-panel">
+  <header class="sl-panel-cabecera">
+    <h2>Modelos vigentes</h2>
+    <p>La ficha con la que cada modelo se aprobó: algoritmo, escenario,
+       métricas de prueba y semilla. No se recalcula al abrir esta pantalla —
+       se lee de <code>modelos_ml</code>, tal como quedó al entrenar.</p>
+  </header>
+  <div id="modelos" class="sl-cargando">Cargando…</div>
+  <p class="sl-lectura" id="l-modelos"></p>
+</section>
+
+<section class="sl-panel">
+  <header class="sl-panel-cabecera">
+    <h2>Entregas en riesgo</h2>
+    <p>Las entregas pendientes que ya tienen predicción, ordenadas por
+       probabilidad de llegar tarde. Esta pantalla <strong>lista</strong> lo
+       predicho; predecir es una acción, y se dispara desde el módulo de
+       entregas o con el formulario de abajo.</p>
+  </header>
+  <div id="riesgo" class="sl-cargando">Cargando…</div>
+</section>
+
+{% if puede_predecir %}
+<section class="sl-panel">
+  <header class="sl-panel-cabecera">
+    <h2>Predecir una entrega</h2>
+    <p>El escenario no se elige aquí: lo decide el estado del viaje. Mientras
+       la jornada no haya salido no existen ni el retraso de salida ni los
+       incidentes, y pedir el escenario EN_RUTA sería inventar esos datos.</p>
+  </header>
+  <form class="sl-controles" id="form-prediccion">
+    <div class="sl-filtro" style="min-width:320px">
+      <label class="form-label" for="entrega">Entrega pendiente</label>
+      <select class="form-select form-select-sm" id="entrega" required>
+        <option value="">Cargando entregas…</option>
+      </select>
+    </div>
+    <div class="form-check align-self-end mb-2">
+      <input class="form-check-input" type="checkbox" id="guardar" checked>
+      <label class="form-check-label" for="guardar">Guardar en la entrega</label>
+    </div>
+    <button class="btn btn-sm btn-primary align-self-end mb-2" type="submit">
+      <i class="bi bi-magic"></i> Predecir</button>
+  </form>
+  <div id="resultado-prediccion"></div>
+</section>
+{% endif %}
+
+<section class="sl-panel">
+  <header class="sl-panel-cabecera">
+    <h2>Agrupamiento de rutas</h2>
+    <p id="nota-clusters">
+      K-Means sobre las componentes principales de las rutas.
+    </p>
+  </header>
+  <div class="sl-rejilla-2">
+    <figure class="sl-grafica">
+      <figcaption>Rutas en el plano de componentes principales</figcaption>
+      <canvas id="g-clusters" height="260"></canvas>
+    </figure>
+    <div id="grupos" class="sl-cargando">Cargando…</div>
+  </div>
+  <p class="sl-lectura" id="l-clusters"></p>
+</section>
+
+{% endblock %}
+
+{% block scripts %}
+<script>window.SIGLOG.puedePredecir = {{ 'true' if puede_predecir else 'false' }};</script>
+<script src="/static/js/ml.js"></script>
+{% endblock %}

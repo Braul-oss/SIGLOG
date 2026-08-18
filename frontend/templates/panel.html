@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% set seccion = 'panel' %}
+{% block titulo %}Panel ejecutivo{% endblock %}
+{% block encabezado %}Panel ejecutivo{% endblock %}
+{% block subtitulo %}
+  Los diez indicadores del Panel A. Cada uno viene con su lectura: un número
+  sin contexto no dice si es bueno.
+{% endblock %}
+
+{% block acciones_cabecera %}
+  <a href="/analitica" class="btn btn-sm btn-outline-primary">
+    <i class="bi bi-bar-chart-line"></i> Ver analítica</a>
+{% endblock %}
+
+{% block contenido %}
+
+{% if aviso %}
+  <div class="alert alert-warning">
+    <h6 class="alert-heading"><i class="bi bi-exclamation-triangle"></i>
+      La capa analítica todavía no está lista</h6>
+    <p class="mb-2 small">{{ aviso }}</p>
+    <p class="mb-0 small text-body-secondary">
+      Los indicadores salen del data warehouse. Mientras no se haya cargado no
+      hay nada que resumir — y mostrar ceros sería peor que no mostrar nada.
+    </p>
+  </div>
+{% endif %}
+
+{% if resumen_ejecutivo %}
+  <div class="sl-resumen">
+    <div class="sl-resumen-icono"><i class="bi bi-lightbulb"></i></div>
+    <div>
+      <h6>Resumen ejecutivo</h6>
+      <p>{{ resumen_ejecutivo }}</p>
+    </div>
+  </div>
+{% endif %}
+
+<div class="sl-kpis">
+  {% for kpi in indicadores %}
+  <article class="sl-kpi sl-kpi-{{ kpi.semaforo | color_semaforo }}">
+    <header>
+      <span class="sl-kpi-titulo">{{ kpi.titulo }}</span>
+      <span class="badge text-bg-{{ kpi.semaforo | color_semaforo }}">
+        {{ kpi.semaforo | title }}</span>
+    </header>
+    <p class="sl-kpi-valor">
+      {%- if kpi.unidad in ('pesos', '$') -%}{{ kpi.valor | dinero }}
+      {%- elif kpi.valor is number and kpi.valor == kpi.valor | round -%}
+        {{ kpi.valor | entero }}
+      {%- else -%}{{ kpi.valor | numero }}{%- endif -%}
+      <small>{{ kpi.unidad }}</small>
+    </p>
+    <p class="sl-kpi-lectura">{{ kpi.lectura }}</p>
+  </article>
+  {% endfor %}
+</div>
+
+{% if indicadores %}
+<section class="sl-panel">
+  <header class="sl-panel-cabecera">
+    <h2>Dónde se concentra el retraso</h2>
+    <p>Las mismas cifras que sostienen el dashboard, vistas por ruta y por
+       causa. Salen de los endpoints de analítica, no de un cálculo aparte.</p>
+  </header>
+  <div class="sl-rejilla-2">
+    <figure class="sl-grafica">
+      <figcaption>Rutas de mayor volumen</figcaption>
+      <canvas id="g-rutas" height="220"></canvas>
+      <p class="sl-lectura" id="l-rutas">Cargando…</p>
+    </figure>
+    <figure class="sl-grafica">
+      <figcaption>Pareto de causas</figcaption>
+      <canvas id="g-causas" height="220"></canvas>
+      <p class="sl-lectura" id="l-causas">Cargando…</p>
+    </figure>
+  </div>
+</section>
+
+<section class="sl-panel">
+  <header class="sl-panel-cabecera">
+    <h2>Alertas operativas</h2>
+    <p>Lo que exige una decisión hoy.</p>
+  </header>
+  <div class="sl-rejilla-2">
+    <div class="sl-tarjeta" id="t-mantenimiento">
+      <h6><i class="bi bi-tools"></i> Mantenimiento pendiente</h6>
+      <div class="sl-cargando">Cargando…</div>
+    </div>
+    <div class="sl-tarjeta" id="t-riesgo">
+      <h6><i class="bi bi-cpu"></i> Entregas en riesgo</h6>
+      <div class="sl-cargando">Cargando…</div>
+    </div>
+  </div>
+</section>
+{% endif %}
+
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/panel.js"></script>
+{% endblock %}

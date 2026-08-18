@@ -4,7 +4,8 @@ Sistema de información para una empresa de transporte y distribución: administ
 la operación logística (clientes, vehículos, operadores, rutas, viajes, entregas,
 incidentes, combustible y mantenimiento) y extrae conocimiento de ella mediante
 un proceso ETL, un data warehouse, modelos de Machine Learning y un dashboard
-con interpretación automática.
+con interpretación automática. Todo se opera desde una interfaz web servida
+por el mismo proceso de FastAPI.
 
 > **Todos los datos del proyecto son SIMULADOS**, generados con fines académicos.
 > Ninguna cifra describe una empresa real. Cada documento lleva la marca
@@ -79,6 +80,50 @@ python app.py                       # equivalente a la anterior
 
 El host, el puerto y la recarga automática se configuran en el `.env`
 (`API_HOST`, `API_PUERTO`, `API_RECARGA`).
+
+### La interfaz web
+
+Con el servidor en marcha, la aplicación está en **<http://127.0.0.1:8000/>**.
+La documentación interactiva del API sigue en `/docs`.
+
+| Pantalla | Qué muestra |
+|---|---|
+| `/panel` | Los diez indicadores del Panel A, con su lectura, más las alertas de mantenimiento y de entregas en riesgo |
+| `/modulos/<clave>` | Los diez módulos del dominio: tabla con filtros, alta, edición y las acciones propias de cada uno |
+| `/analitica` | Rutas más usadas, Pareto de causas y mapa de saturación |
+| `/ml` | Modelos vigentes, entregas en riesgo, predicción y agrupamiento de rutas |
+
+**Jinja2 + Bootstrap, sin build** (§8.2). No hay Node, ni npm, ni framework
+JS: Bootstrap y Chart.js llegan por CDN y lo propio son una hoja de estilo y
+cinco archivos de JavaScript servidos como estáticos.
+
+**Una sola pantalla para los diez módulos.** Lo que cambia entre ellos
+—columnas, filtros, campos y acciones— se declara en
+`backend/vistas/catalogo.py`. Escribir diez plantillas casi idénticas habría
+multiplicado por diez cualquier corrección de la tabla o del formulario.
+
+**La interfaz no escribe por su cuenta.** Las páginas devuelven HTML; los
+datos los pide y los envía el navegador al mismo API que ya existe. Si las
+vistas leyeran y escribieran por un camino propio, habría dos rutas hacia los
+mismos datos y tarde o temprano se comportarían distinto: un filtro que en
+una lista funciona y en la otra no, una regla que una valida y la otra se
+salta. La única excepción son los KPIs del panel, que se piden en el servidor
+para que la página llegue ya pintada — lectura pura, y del mismo servicio que
+atiende `/api/v1/analitica/kpis`.
+
+**La sesión viaja en una cookie**, no en `localStorage`. El navegador no
+puede mandar la cabecera `Authorization` al pedir una página, así que el
+mismo token JWT del API viaja en una cookie `HttpOnly` —el JavaScript no
+puede leerla, de modo que un XSS no podría llevarse la sesión— y
+`SameSite=strict`, que es lo que sostiene la defensa contra CSRF cuando se
+autentica por cookie. Si llega la cabecera `Authorization`, manda ella: quien
+la envía explícitamente está eligiendo con qué identidad actuar.
+
+**Ocultar un botón no es un permiso.** La interfaz esconde lo que un rol no
+podría usar —enseñar un botón que siempre responderá 403 es una mentira—,
+pero quien autoriza sigue siendo `requiere_rol` en el router, y lo hace
+aunque alguien fabrique la petición a mano. `tests/test_frontend.py` lo
+comprueba en los dos sentidos.
 
 ### Primer usuario
 
@@ -487,6 +532,7 @@ python tests/test_combustible.py    # módulo combustible (20 pruebas)
 python tests/test_mantenimientos.py # módulo mantenimiento (21 pruebas)
 python tests/test_analitica.py      # endpoints de analítica (11 pruebas)
 python tests/test_ml.py             # endpoints de ML (15 pruebas)
+python tests/test_frontend.py       # interfaz web (19 pruebas)
 
 # o con pytest
 pytest tests/ -v
@@ -504,7 +550,7 @@ SIGLOG/
 ├── app.py           Punto de entrada (reexporta backend/main.py)
 ├── config/          Configuración y conexión única a MongoDB
 ├── backend/         API FastAPI (routers, services, repositories, schemas)
-├── frontend/        Plantillas Jinja2 y estáticos (pendiente)
+├── frontend/        Plantillas Jinja2 y estáticos (CSS y JS)
 ├── database/        Esquemas, índices y generador de datos simulados
 ├── etl/             Extracción, limpieza, transformación, enriquecimiento y carga
 ├── ml/              Modelos supervisados y no supervisados
@@ -543,7 +589,7 @@ Frontend → FastAPI → Service → analytics/ · ml/ → MongoDB → respuesta
 | Gestión de usuarios y roles | Completo |
 | Módulos del dominio: clientes, vehículos, operadores, rutas, viajes, entregas, incidentes, combustible, mantenimiento | Completo |
 | Endpoints de analítica y ML | Completo |
-| Frontend | Pendiente |
+| Interfaz web (Jinja2 + Bootstrap) | Completo |
 | Reportes PDF | Pendiente |
 
 La documentación de diseño está en `docs/SIG-LOG_Documento_Tecnico_Base.md`.

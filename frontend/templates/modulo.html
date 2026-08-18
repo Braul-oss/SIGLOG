@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+{% set seccion = modulo.clave %}
+{% block titulo %}{{ modulo.titulo }}{% endblock %}
+{% block encabezado %}{{ modulo.titulo }}{% endblock %}
+{% block subtitulo %}{{ modulo.descripcion }}{% endblock %}
+
+{% block acciones_cabecera %}
+  {% if puede_escribir %}
+    {% for accion in modulo.acciones if not accion.por_fila %}
+      <button class="btn btn-sm btn-{{ accion.estilo }}"
+              data-accion-global="{{ accion.clave }}">
+        <i class="bi bi-lightning-charge"></i> {{ accion.etiqueta }}</button>
+    {% endfor %}
+    {% if modulo.campos_alta %}
+      <button class="btn btn-sm btn-primary" id="btn-alta">
+        <i class="bi bi-plus-lg"></i> {{ modulo.etiqueta_alta }}</button>
+    {% endif %}
+  {% else %}
+    <span class="badge text-bg-light border">
+      <i class="bi bi-eye"></i> Solo consulta con el rol {{ rol | title }}</span>
+  {% endif %}
+{% endblock %}
+
+{% block contenido %}
+
+{% if modulo.nota %}
+  <div class="sl-nota"><i class="bi bi-info-circle"></i> {{ modulo.nota }}</div>
+{% endif %}
+
+<section class="sl-panel">
+  <form class="sl-filtros" id="filtros" autocomplete="off">
+    {% for filtro in modulo.filtros %}
+      <div class="sl-filtro">
+        <label class="form-label" for="f-{{ filtro.nombre }}">{{ filtro.etiqueta }}</label>
+        {% if filtro.tipo == 'select' %}
+          <select class="form-select form-select-sm" id="f-{{ filtro.nombre }}"
+                  name="{{ filtro.nombre }}">
+            <option value="">Todos</option>
+            {% for opcion in filtro.opciones %}
+              <option value="{{ opcion }}">{{ opcion.replace('_', ' ') | title }}</option>
+            {% endfor %}
+          </select>
+        {% elif filtro.tipo == 'ref' %}
+          <select class="form-select form-select-sm" id="f-{{ filtro.nombre }}"
+                  name="{{ filtro.nombre }}"
+                  data-recurso="{{ filtro.recurso }}"
+                  data-etiqueta="{{ filtro.etiqueta_opcion }}">
+            <option value="">Todos</option>
+          </select>
+        {% elif filtro.tipo == 'checkbox' %}
+          <div class="form-check sl-filtro-check">
+            <input class="form-check-input" type="checkbox"
+                   id="f-{{ filtro.nombre }}" name="{{ filtro.nombre }}">
+            <label class="form-check-label" for="f-{{ filtro.nombre }}">Sí</label>
+          </div>
+        {% else %}
+          <input class="form-control form-control-sm" type="{{ filtro.tipo }}"
+                 id="f-{{ filtro.nombre }}" name="{{ filtro.nombre }}">
+        {% endif %}
+      </div>
+    {% endfor %}
+    <div class="sl-filtro sl-filtro-botones">
+      <button class="btn btn-sm btn-outline-primary" type="submit">
+        <i class="bi bi-funnel"></i> Filtrar</button>
+      <button class="btn btn-sm btn-outline-secondary" type="reset" id="btn-limpiar">
+        Limpiar</button>
+    </div>
+  </form>
+
+  <div class="sl-tabla-envoltura">
+    <table class="table table-hover align-middle sl-tabla">
+      <thead>
+        <tr>
+          {% for columna in modulo.columnas %}
+            <th{% if columna.ancho %} style="width:{{ columna.ancho }}"{% endif %}>
+              {{ columna.etiqueta }}</th>
+          {% endfor %}
+          <th class="text-end" style="width:1%">Acciones</th>
+        </tr>
+      </thead>
+      <tbody id="cuerpo">
+        <tr><td colspan="{{ modulo.columnas | length + 1 }}"
+                class="sl-cargando">Cargando…</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="sl-paginacion">
+    <span id="conteo" class="text-body-secondary small"></span>
+    <div class="btn-group btn-group-sm">
+      <button class="btn btn-outline-secondary" id="btn-anterior">
+        <i class="bi bi-chevron-left"></i> Anterior</button>
+      <button class="btn btn-outline-secondary" id="btn-siguiente">
+        Siguiente <i class="bi bi-chevron-right"></i></button>
+    </div>
+  </div>
+</section>
+
+{% if modulo.resumen %}
+<section class="sl-panel" id="panel-resumen">
+  <header class="sl-panel-cabecera">
+    <h2>Resumen del módulo</h2>
+    <p>Las mismas agregaciones que responde el endpoint
+       <code>{{ modulo.recurso }}{{ modulo.resumen }}</code>.</p>
+  </header>
+  <div id="resumen" class="sl-cargando">Cargando…</div>
+</section>
+{% endif %}
+
+{# ---------------------------------------------------------------- modales #}
+<div class="modal fade" id="modal-formulario" tabindex="-1">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="modal-titulo">Formulario</h5>
+        <button class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <p class="text-body-secondary small" id="modal-descripcion"></p>
+        <div id="modal-error" class="alert alert-danger d-none py-2 small"></div>
+        <form id="modal-form" novalidate></form>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline-secondary" data-bs-dismiss="modal">
+          Cancelar</button>
+        <button class="btn btn-primary" id="modal-enviar">Guardar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="modal-detalle" tabindex="-1">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="detalle-titulo">Detalle</h5>
+        <button class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" id="detalle-cuerpo"></div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script id="datos-modulo" type="application/json">{{ modulo_json | a_json }}</script>
+<script>window.SIGLOG.puedeEscribir = {{ 'true' if puede_escribir else 'false' }};</script>
+<script src="/static/js/modulo.js"></script>
+{% endblock %}

@@ -14,9 +14,10 @@ conexiones del tier gratuito de Atlas es limitado y el ETL, el seed y los
 scripts de ML ya comparten ese cliente—, y una prueba puede sustituir la
 base real con `app.dependency_overrides` sin tocar el código.
 
-Aquí vivirán también, cuando llegue su actividad, las dependencias de
-autenticación (`usuario_actual`, `requiere_rol`). Se deja el punto de
-extensión indicado, sin implementarlo.
+Aquí viven también las dependencias de autenticación: `usuario_actual`
+para el API, `usuario_opcional` para las páginas —que ante una sesión
+caducada deben llevar al formulario de entrada, no devolver un JSON de
+error— y `requiere_rol` para la autorización.
 """
 
 from __future__ import annotations
@@ -29,7 +30,7 @@ RAIZ = Path(__file__).resolve().parents[1]
 if str(RAIZ) not in sys.path:
     sys.path.insert(0, str(RAIZ))
 
-from fastapi import Depends
+from fastapi import Depends, Request
 from fastapi.security import OAuth2PasswordBearer
 from pymongo.database import Database
 from pymongo.errors import PyMongoError
@@ -77,8 +78,34 @@ esquema_oauth2 = OAuth2PasswordBearer(
 )
 
 
+def token_de_la_peticion(peticion: Request,
+                         token: str | None = Depends(esquema_oauth2)
+                         ) -> str | None:
+    """
+    Token de la petición, venga de donde venga.
+
+    Dos clientes distintos traen la misma sesión por caminos distintos:
+
+    - un cliente de API (curl, /docs, las pruebas) manda la cabecera
+      `Authorization: Bearer ...`;
+    - el navegador, al pedir una página, **no puede** mandar cabeceras
+      propias — solo cookies.
+
+    Se acepta la cabecera primero. Es lo correcto: si alguien la envía de
+    forma explícita, esa es la identidad que quiere usar, y una cookie de
+    sesión abierta en otra pestaña no debe suplantarla.
+
+    La cookie es HttpOnly y SameSite=strict (ver `config/settings.py`): el
+    JavaScript de la página no puede leerla y el navegador no la adjunta en
+    peticiones que vengan de otro sitio.
+    """
+    if token:
+        return token
+    return peticion.cookies.get(settings.COOKIE_SESION)
+
+
 def usuario_actual(bd: Database = Depends(obtener_base_datos),
-                   token: str | None = Depends(esquema_oauth2)) -> dict:
+                   token: str | None = Depends(token_de_la_peticion)) -> dict:
     """
     Usuario autenticado que hace la petición.
 
@@ -96,6 +123,25 @@ def usuario_actual(bd: Database = Depends(obtener_base_datos),
         raise CredencialesInvalidas(
             "Esta operación requiere iniciar sesión.")
     return autenticacion.usuario_desde_token(bd, token)
+
+
+def usuario_opcional(bd: Database = Depends(obtener_base_datos),
+                     token: str | None = Depends(token_de_la_peticion)
+                     ) -> dict | None:
+    """
+    Como `usuario_actual`, pero devuelve None en vez de fallar con 401.
+
+    La usan las páginas: una sesión caducada debe llevar al formulario de
+    entrada, no a un JSON de error que el navegador mostraría en crudo.
+    """
+    from backend.services import autenticacion
+
+    if not token:
+        return None
+    try:
+        return autenticacion.usuario_desde_token(bd, token)
+    except Exception:                # noqa: BLE001 — token inválido o caducado
+        return None
 
 
 def requiere_rol(*roles: str):
@@ -118,6 +164,7 @@ def requiere_rol(*roles: str):
 
 # Alias legibles para las firmas de los endpoints
 UsuarioAutenticado = Annotated[dict, Depends(usuario_actual)]
+UsuarioOpcional = Annotated["dict | None", Depends(usuario_opcional)]
 SoloAdministrador = Annotated[dict, Depends(requiere_rol(settings.ROL_ADMINISTRADOR))]
 AdministradorODespachador = Annotated[
     dict, Depends(requiere_rol(settings.ROL_ADMINISTRADOR, settings.ROL_DESPACHADOR))]

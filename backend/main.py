@@ -27,7 +27,8 @@ Ejecución
     python -m backend.main                       # con la config del .env
     uvicorn backend.main:app --reload            # equivalente, recarga activa
 
-Documentación interactiva: http://127.0.0.1:8000/docs
+Interfaz web:               http://127.0.0.1:8000/
+Documentación interactiva:  http://127.0.0.1:8000/docs
 """
 
 from __future__ import annotations
@@ -43,13 +44,14 @@ if str(RAIZ) not in sys.path:
 from fastapi import FastAPI, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 from pymongo.errors import PyMongoError
 
 from backend.routers import (analitica, autenticacion, clientes, combustible,
                              entregas, incidentes, mantenimientos, ml,
                              operadores, rutas, sistema, usuarios, vehiculos,
-                             viajes)
+                             viajes, vistas)
 from backend.schemas.comunes import RespuestaError
 from backend.utils import respuestas
 from backend.utils.errores import ErrorSIGLOG
@@ -87,6 +89,7 @@ async def ciclo_de_vida(app: FastAPI):
 
     print(f"  API ........... http://{settings.API_HOST}:{settings.API_PUERTO}"
           f"{settings.API_PREFIJO}")
+    print(f"  Interfaz web .. http://{settings.API_HOST}:{settings.API_PUERTO}/")
     print(f"  Documentación . http://{settings.API_HOST}:{settings.API_PUERTO}/docs")
     print(f"  Datos ......... SIMULADOS (decisión C-02)")
 
@@ -263,19 +266,24 @@ app.include_router(ml.router, prefix=settings.API_PREFIJO)
 app.include_router(sistema.router, prefix=settings.API_PREFIJO)
 
 # --------------------------------------------------------------------------
+# INTERFAZ WEB  (§8.2)
+# --------------------------------------------------------------------------
+# Las páginas van SIN el prefijo `/api/v1`: `/panel`, `/modulos/viajes`. La
+# separación es intencional —el API es un contrato versionado y la interfaz
+# no— y deja libre la posibilidad de publicar `/api/v2` sin tocar una sola
+# plantilla.
+#
+# Los estáticos se sirven desde este mismo proceso. No hay build ni npm:
+# Bootstrap y Chart.js llegan por CDN y lo propio son dos archivos.
+app.mount("/static",
+          StaticFiles(directory=str(settings.FRONTEND_ESTATICOS)),
+          name="static")
+app.include_router(vistas.router)
+
+# --------------------------------------------------------------------------
 # PUNTOS DE EXTENSIÓN — actividades posteriores
 # --------------------------------------------------------------------------
-# Los módulos del dominio y la capa analítica están completos. `analitica`
-# y `ml` no duplican lógica: llaman a analytics/ y a ml/, que siguen siendo
-# el único lugar donde los KPIs se definen y los modelos se entrenan.
-# Quedan pendientes el frontend (Jinja2 + Bootstrap, §8.2) y los reportes
-# PDF.
-
-
-@app.get("/", include_in_schema=False)
-async def raiz() -> RedirectResponse:
-    """La raíz lleva a la documentación interactiva."""
-    return RedirectResponse(url="/docs")
+# Queda pendiente la generación de reportes PDF (§18.4).
 
 
 # ==========================================================================

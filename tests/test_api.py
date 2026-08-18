@@ -178,11 +178,20 @@ def test_documentacion_openapi():
         assert f"{API}{endpoint}" in rutas, f"falta documentar {endpoint}"
 
 
-def test_raiz_redirige_a_documentacion():
+def test_la_raiz_lleva_a_la_interfaz():
+    """
+    Desde que existe la interfaz web (§8.2), la raíz es la puerta del
+    sistema, no de la documentación: quien abre la dirección del servidor
+    quiere usar SIG-LOG, no leer su especificación. La documentación sigue
+    donde estaba, en /docs, y esta prueba lo comprueba también.
+    """
     with crear_cliente() as cliente:
         respuesta = cliente.get("/", follow_redirects=False)
-    assert respuesta.status_code in (302, 307)
-    assert respuesta.headers["location"] == "/docs"
+        documentacion = cliente.get("/docs")
+    assert respuesta.status_code in (302, 303, 307)
+    # Sin sesión lleva al acceso; con sesión, al panel
+    assert respuesta.headers["location"] in ("/entrar", "/panel")
+    assert documentacion.status_code == 200
 
 
 def test_cors_no_es_comodin():
@@ -241,7 +250,10 @@ def test_todas_las_rutas_bajo_el_prefijo():
     Toda ruta de la API cuelga de /api/v1 (§12.2).
 
     Solo quedan fuera la raíz y las páginas de documentación, que por
-    convención viven en el dominio raíz.
+    convención viven en el dominio raíz. Las páginas de la interfaz web no
+    aparecen aquí a propósito: su router se declara con
+    `include_in_schema=False` porque el esquema OpenAPI describe el
+    contrato del API, no la navegación del sitio.
     """
     from backend.main import app
 
@@ -289,7 +301,7 @@ if __name__ == "__main__":
         ("Error 404 con formato uniforme", test_error_404_con_formato_uniforme),
         ("Error 422 con formato uniforme", test_error_422_con_formato_uniforme),
         ("Documentación OpenAPI generada", test_documentacion_openapi),
-        ("La raíz redirige a /docs", test_raiz_redirige_a_documentacion),
+        ("La raíz lleva a la interfaz", test_la_raiz_lleva_a_la_interfaz),
         ("CORS con orígenes explícitos", test_cors_no_es_comodin),
         ("El backend no duplica la capa analítica",
          test_no_se_duplica_la_capa_analitica),

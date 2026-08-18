@@ -424,6 +424,32 @@ def jwt_clave_es_insegura() -> bool:
 
 
 # --------------------------------------------------------------------------
+# Interfaz web  (§8.2 — Jinja2 + Bootstrap servidos por el mismo FastAPI)
+# --------------------------------------------------------------------------
+FRONTEND_RAIZ = RAIZ_PROYECTO / "frontend"
+FRONTEND_PLANTILLAS = FRONTEND_RAIZ / "templates"
+FRONTEND_ESTATICOS = FRONTEND_RAIZ / "static"
+
+# El navegador no puede mandar la cabecera `Authorization` al pedir una
+# página: solo manda cookies. El mismo token JWT que usa el API viaja en
+# esta cookie para las peticiones del navegador.
+#
+# HttpOnly: el JavaScript de la página NO puede leerla. Es lo que impide
+# que un XSS se lleve la sesión, y por eso el token no se guarda en
+# localStorage aunque sea más cómodo.
+#
+# SameSite=strict: el navegador no la adjunta en peticiones originadas
+# desde otro sitio. Con autenticación por cookie eso es lo que sostiene la
+# defensa contra CSRF, porque cualquier página externa que provocara un
+# POST a esta API lo haría sin sesión.
+COOKIE_SESION: str = "siglog_sesion"
+COOKIE_SAMESITE: str = "strict"
+# Solo por HTTPS. En desarrollo se sirve por http://127.0.0.1 y activarlo
+# impediría entrar, así que sigue al entorno en vez de estar fijo.
+COOKIE_SEGURA: bool = APP_ENTORNO.lower() in ("produccion", "production")
+
+
+# --------------------------------------------------------------------------
 # Construcción de la URI de conexión
 # --------------------------------------------------------------------------
 def construir_uri() -> str:
