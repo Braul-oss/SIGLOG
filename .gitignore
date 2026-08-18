@@ -1,0 +1,35 @@
+# ============================================================
+# SIG-LOG — Archivos que NO deben subirse al repositorio
+# ============================================================
+
+# Credenciales (NUNCA subir; usar .env.example como plantilla)
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Entornos virtuales
+venv/
+.venv/
+env/
+
+# Editores / SO
+.vscode/
+.idea/
+Thumbs.db
+.DS_Store
+
+# Datos regenerables del ETL (se reconstruyen con etl/run_etl.py).
+# data/outputs/ SÍ se versiona: contiene gráficas y reportes usados
+# como evidencia académica.
+data/raw/*
+data/processed/*
+data/external/*
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+!data/external/.gitkeep

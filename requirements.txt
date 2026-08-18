@@ -1,0 +1,32 @@
+# ============================================================
+# SIG-LOG — Dependencias del proyecto
+# Entorno de referencia: Python 3.13 (miniconda base)
+# Instalación:  pip install -r requirements.txt
+# ============================================================
+
+# --- Base de datos (MongoDB Atlas) ---
+pymongo>=4.15
+dnspython>=2.8          # requerido por las URI mongodb+srv://
+python-dotenv>=1.0
+
+# --- Análisis de datos y ETL ---
+pandas>=2.3
+numpy>=2.0
+
+# --- Machine Learning ---
+scikit-learn>=1.8
+
+# --- Visualización ---
+matplotlib>=3.11
+
+# --- API / backend web ---
+fastapi>=0.115
+uvicorn[standard]>=0.30
+jinja2>=3.1
+python-multipart>=0.0.9   # formularios (login)
+
+# --- Reportes PDF ---
+reportlab>=4.0
+
+# --- Pruebas ---
+pytest>=8.0
