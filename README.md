@@ -174,6 +174,11 @@ Todos bajo el prefijo `/api/v1` (§12.2 del documento técnico).
 | PATCH | `/viajes/{id}/iniciar` | admin o despachador | Registrar la salida real |
 | PATCH | `/viajes/{id}/finalizar` | admin o despachador | Registrar el regreso |
 | PATCH | `/viajes/{id}/cancelar` | admin o despachador | Cancelar con motivo |
+| GET | `/entregas` · `/catalogos` · `/resumen` · `/{id}` | sesión | Consultar entregas |
+| POST | `/entregas` | admin o despachador | Crear una entrega |
+| POST | `/entregas/generar` | admin o despachador | Generarlas todas desde la ruta |
+| PATCH | `/entregas/{id}/llegada` | admin o despachador | Registrar la llegada → calcula el retraso |
+| PATCH | `/entregas/{id}/estatus` | admin o despachador | Cambiar estatus + historial |
 
 En el módulo de clientes el permiso **no es uniforme**: consultar lo puede
 hacer cualquier sesión —el despachador necesita ver clientes para registrar
@@ -245,7 +250,24 @@ administrador no pueda dejar el sistema sin quien lo administre:
 | RN-J6 | El odómetro final supera al inicial y el regreso a la salida |
 | RN-J7 | No hay borrado ni baja lógica: solo cancelación con motivo |
 
-> **Viajes es la única colección sin baja lógica.** El §11.5 establece que
+**Reglas del módulo de entregas:**
+
+| Regla | Qué impide |
+|---|---|
+| RN-E1 | El folio ENT-AAAAMMDD-NNNNN lo genera el sistema |
+| RN-E2 | `tiempo_real_min`, `retraso_min` y `es_retraso` se calculan al registrar la llegada; nunca se capturan |
+| RN-E3 | El estatus sigue RNP-08 y cada cambio queda en el historial con quién lo hizo |
+| RN-E4 | No se registra llegada si el viaje no está EN_CURSO |
+| RN-E5 | Los campos denormalizados preservan el dato histórico (§10.4) |
+| RN-E6 | La causa de retraso solo se acepta si la entrega llegó retrasada |
+| RN-E7 | La entrega hereda del viaje su ruta, vehículo, operador y fecha |
+
+> **`PATCH /entregas/{id}/llegada` es el endpoint más importante del sistema.**
+> Ahí nacen `retraso_min` y `es_retraso`, las dos variables que los modelos
+> aprenden a predecir. Se derivan de las horas y nunca se capturan: los modelos
+> deben aprender de lo que ocurrió, no de lo que alguien tecleó.
+
+> **Viajes y entregas son las colecciones sin baja lógica.** El §11.5 establece que
 > cada documento *es* el histórico y no se sobrescribe, así que un viaje no se
 > borra: se cancela dejando constancia del motivo.
 
@@ -339,6 +361,7 @@ python tests/test_vehiculos.py      # módulo vehículos (30 pruebas)
 python tests/test_operadores.py     # módulo operadores (29 pruebas)
 python tests/test_rutas.py          # módulo rutas (34 pruebas)
 python tests/test_viajes.py         # módulo viajes (26 pruebas)
+python tests/test_entregas.py       # módulo entregas (26 pruebas)
 
 # o con pytest
 pytest tests/ -v
@@ -393,8 +416,8 @@ Frontend → FastAPI → Service → analytics/ · ml/ → MongoDB → respuesta
 | Backend base (API) | Completo |
 | Autenticación y roles (JWT) | Completo |
 | Gestión de usuarios y roles | Completo |
-| Módulos: clientes, vehículos, operadores, rutas, viajes | Completo |
-| Módulos restantes (3): entregas, combustible, mantenimiento | Pendiente |
+| Módulos: clientes, vehículos, operadores, rutas, viajes, entregas | Completo |
+| Módulos restantes (3): incidentes, combustible, mantenimiento | Pendiente |
 | Endpoints de analítica y ML | Pendiente |
 | Frontend | Pendiente |
 | Reportes PDF | Pendiente |
