@@ -117,6 +117,27 @@ Todos bajo el prefijo `/api/v1` (§12.2 del documento técnico).
 | POST | `/auth/cambiar-contrasena` | sesión | Cambia la contraseña propia |
 | GET | `/diagnostico/colecciones` | sesión | Conteo de documentos por colección |
 | GET | `/diagnostico/muestra/{coleccion}` | sesión | Documentos de muestra |
+| GET | `/usuarios` | admin | Listar cuentas (paginado, filtrable por rol) |
+| GET | `/usuarios/roles` | admin | Catálogo de roles |
+| GET | `/usuarios/resumen` | admin | Conteo por rol y estado |
+| GET | `/usuarios/{id}` | admin | Detalle de una cuenta |
+| POST | `/usuarios` | admin | Alta de una cuenta |
+| PUT | `/usuarios/{id}` | admin | Editar nombre y correo |
+| PATCH | `/usuarios/{id}/rol` | admin | Cambiar el rol |
+| PATCH | `/usuarios/{id}/contrasena` | admin | Restablecer la contraseña |
+| DELETE | `/usuarios/{id}` | admin | Baja lógica |
+| PATCH | `/usuarios/{id}/reactivar` | admin | Reactivar una cuenta |
+
+**Reglas de negocio de la gestión de cuentas.** Existen para que un
+administrador no pueda dejar el sistema sin quien lo administre:
+
+| Regla | Qué impide |
+|---|---|
+| RN-U1 | Nadie puede desactivar su propia cuenta |
+| RN-U2 | Nadie puede cambiar su propio rol |
+| RN-U3 | No se puede desactivar ni degradar al último administrador activo |
+| RN-U4 | El identificador de acceso no se puede cambiar |
+| RN-U5 | El hash de la contraseña nunca sale en una respuesta |
 
 Los endpoints de salud quedan abiertos a propósito: un monitor externo debe
 poder comprobar que el servicio vive sin tener credenciales.
@@ -186,6 +207,7 @@ python -m etl.exploracion
 python tests/test_conexion.py       # conexión, colecciones e índices
 python tests/test_api.py            # backend base (14 pruebas)
 python tests/test_autenticacion.py  # seguridad y roles (21 pruebas)
+python tests/test_usuarios.py       # gestión de usuarios (28 pruebas)
 
 # o con pytest
 pytest tests/ -v
@@ -239,7 +261,7 @@ Frontend → FastAPI → Service → analytics/ · ml/ → MongoDB → respuesta
 | KPIs y dashboard | Completo |
 | Backend base (API) | Completo |
 | Autenticación y roles (JWT) | Completo |
-| Gestión de usuarios | Pendiente |
+| Gestión de usuarios y roles | Completo |
 | Módulos CRUD | Pendiente |
 | Endpoints de analítica y ML | Pendiente |
 | Frontend | Pendiente |

@@ -116,18 +116,27 @@ class RepositorioBase:
         nuevo["_id"] = resultado.inserted_id
         return nuevo
 
-    def actualizar(self, identificador: str,
-                   cambios: dict[str, Any]) -> dict[str, Any]:
-        self.obtener(identificador)          # valida existencia → 404
+    def actualizar(self, identificador: str, cambios: dict[str, Any],
+                   incluir_inactivos: bool = False) -> dict[str, Any]:
+        """
+        Aplica los cambios y devuelve el documento ya actualizado.
+
+        `incluir_inactivos` es necesario en dos casos que de otro modo
+        fallarían con un 404 desconcertante: al dar de baja (tras escribir
+        `activo: False`, la relectura ya no encontraría el documento) y al
+        reactivar (el documento parte de estar inactivo).
+        """
+        self.obtener(identificador, incluir_inactivos)   # valida existencia → 404
         self.coleccion.update_one(
             {"_id": self.a_object_id(identificador)},
             {"$set": {**cambios, "fecha_modificacion": self._ahora()}},
         )
-        return self.obtener(identificador)
+        return self.obtener(identificador, incluir_inactivos=True)
 
     def baja_logica(self, identificador: str) -> dict[str, Any]:
         """DELETE del §12.3: marca inactivo, nunca elimina el documento."""
-        return self.actualizar(identificador, {"activo": False})
+        return self.actualizar(identificador, {"activo": False},
+                               incluir_inactivos=True)
 
     # ----------------------------------------------------------------------
     # Interno

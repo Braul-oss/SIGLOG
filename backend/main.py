@@ -46,7 +46,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, RedirectResponse
 from pymongo.errors import PyMongoError
 
-from backend.routers import autenticacion, sistema
+from backend.routers import autenticacion, sistema, usuarios
 from backend.schemas.comunes import RespuestaError
 from backend.utils import respuestas
 from backend.utils.errores import ErrorSIGLOG
@@ -245,6 +245,7 @@ async def manejar_error_no_previsto(_: Request, exc: Exception) -> JSONResponse:
 # RUTAS
 # ==========================================================================
 app.include_router(autenticacion.router, prefix=settings.API_PREFIJO)
+app.include_router(usuarios.router, prefix=settings.API_PREFIJO)
 app.include_router(sistema.router, prefix=settings.API_PREFIJO)
 
 # --------------------------------------------------------------------------
@@ -252,7 +253,7 @@ app.include_router(sistema.router, prefix=settings.API_PREFIJO)
 # --------------------------------------------------------------------------
 # Cada módulo se incorporará con una línea como la anterior:
 #     app.include_router(clientes.router, prefix=settings.API_PREFIJO)
-# La gestión de usuarios, los ocho módulos CRUD, /analitica y /ml quedan
+# Los ocho módulos CRUD del dominio logístico, /analitica y /ml quedan
 # pendientes por indicación expresa del alcance de esta actividad.
 
 

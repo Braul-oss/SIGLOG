@@ -130,9 +130,9 @@ def capacidades() -> dict[str, Any]:
     return {
         "prefijo": settings.API_PREFIJO,
         "documentacion": "/docs",
-        "modulos_disponibles": ["sistema", "autenticacion"],
+        "modulos_disponibles": ["sistema", "autenticacion", "usuarios"],
         "modulos_pendientes": [
-            "usuarios", "clientes", "vehiculos", "operadores",
+            "clientes", "vehiculos", "operadores",
             "rutas", "viajes", "entregas", "incidentes", "combustible",
             "mantenimientos", "analitica", "ml",
         ],
