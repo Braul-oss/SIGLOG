@@ -1,0 +1,86 @@
+==============================================================================
+  SIG-LOG · TABLERO EJECUTIVO (Panel A)  —  datos SIMULADOS
+==============================================================================
+  INDICADOR                                VALOR  ESTADO    UNIDAD
+------------------------------------------------------------------------------
+  Entregas del periodo                    14,779  [ -- ]    entregas
+  Entregas a tiempo                        72.20  [ XX ]    %
+  Retraso promedio                          8.60  [ OK ]    min
+  Retraso mediano                           7.30  [ OK ]    min
+  Kilómetros recorridos               263,011.30  [ -- ]    km
+  Costo de combustible              1,277,755.73  [ -- ]    MXN
+  Costo por kilómetro                       4.86  [ -- ]    MXN/km
+  Rendimiento de la flotilla                6.43  [ !! ]    km/l
+  Vehículos en mantenimiento                   4  [ OK ]    vehículos
+  Incidentes del periodo                     350  [ -- ]    incidentes
+
+==============================================================================
+  INTERPRETACIÓN AUTOMÁTICA (RF-29)
+==============================================================================
+
+  ENTREGAS DEL PERIODO  [ -- ]
+      14,779 entregas registradas en 155 días de operación (92 al día). De
+      ellas, 14,287 tienen datos completos y sostienen todos los indicadores
+      siguientes.
+
+  ENTREGAS A TIEMPO  [ XX ]
+      72.2% de las entregas llegaron dentro del umbral de 15 minutos, por
+      debajo de la meta del 85%. Son 3,978 entregas retrasadas (27.8%) sobre
+      las que actuar.
+
+  RETRASO PROMEDIO  [ OK ]
+      El retraso promedio es de 8.6 minutos, contra una meta de 10. El
+      promedio se ve arrastrado por los casos extremos; la mediana describe
+      mejor a la entrega típica.
+
+  RETRASO MEDIANO  [ OK ]
+      La mitad de las entregas se retrasa menos de 7.3 minutos. Al ser menor
+      que el promedio, confirma que unas pocas entregas muy retrasadas
+      distorsionan la media.
+
+  KILÓMETROS RECORRIDOS  [ -- ]
+      La flotilla recorrió 263,011 km en 2,924 viajes finalizados, un
+      promedio de 90 km por viaje.
+
+  COSTO DE COMBUSTIBLE  [ -- ]
+      $1,277,756 en 50,559 litros. Es el costo variable principal de la
+      operación y el que más rápido responde a cambios en el diseño de las
+      rutas.
+
+  COSTO POR KILÓMETRO  [ -- ]
+      Cada kilómetro cuesta $4.86 en combustible. Es el indicador que
+      permite comparar vehículos de distinto tamaño y antigüedad en igualdad
+      de condiciones.
+
+  RENDIMIENTO DE LA FLOTILLA  [ !! ]
+      El rendimiento real promedio es de 6.43 km/l, 7.3% por debajo del
+      nominal de fábrica (6.93 km/l). Una brecha creciente suele anticipar
+      necesidad de mantenimiento.
+
+  VEHÍCULOS EN MANTENIMIENTO  [ OK ]
+      4 de 20 vehículos (20%) están fuera de operación por mantenimiento
+      vencido, y su carga debe redistribuirse entre el resto.
+
+  INCIDENTES DEL PERIODO  [ -- ]
+      350 incidentes registrados, que acumulan 38,778 minutos perdidos (646
+      horas) en las entregas afectadas.
+
+==============================================================================
+  RESUMEN EJECUTIVO
+==============================================================================
+  En el periodo analizado se registraron 14,779 entregas con una puntualidad
+  del 72.2%, por debajo de la meta del 85%. Requiere atención 1 indicador en
+  rojo: entregas a tiempo. El costo de combustible asciende a $1,277,756
+  ($4.86 por km) y 4 vehículos están fuera de operación.
+
+==============================================================================
+  VERIFICACIONES AUTOMÁTICAS
+==============================================================================
+  [OK]    Los 10 KPIs del Panel A calculados              10 indicadores
+  [OK]    Ningún indicador sin valor                      todos con valor
+  [OK]    Puntualidad en el rango 0-100%                  72.2%
+  [OK]    Mediana menor que la media (distribución sesgada)7.3 < 8.6 min
+  [OK]    Costo por km positivo y consistente             $4.86/km
+  [OK]    Cada KPI trae su interpretación (RF-29)         10 lecturas generadas
+------------------------------------------------------------------------------
+  6/6 verificaciones correctas

@@ -1,0 +1,86 @@
+{
+  "generado": "2026-08-18T06:07:45.424835+00:00",
+  "origen_dato": "SIMULADO",
+  "indicadores": [
+    {
+      "clave": "entregas_totales",
+      "titulo": "Entregas del periodo",
+      "valor": 14779,
+      "unidad": "entregas",
+      "semaforo": "NEUTRO",
+      "lectura": "14,779 entregas registradas en 155 días de operación (92 al día). De ellas, 14,287 tienen datos completos y sostienen todos los indicadores siguientes."
+    },
+    {
+      "clave": "puntualidad",
+      "titulo": "Entregas a tiempo",
+      "valor": 72.2,
+      "unidad": "%",
+      "semaforo": "ROJO",
+      "lectura": "72.2% de las entregas llegaron dentro del umbral de 15 minutos, por debajo de la meta del 85%. Son 3,978 entregas retrasadas (27.8%) sobre las que actuar."
+    },
+    {
+      "clave": "retraso_medio",
+      "titulo": "Retraso promedio",
+      "valor": 8.6,
+      "unidad": "min",
+      "semaforo": "VERDE",
+      "lectura": "El retraso promedio es de 8.6 minutos, contra una meta de 10. El promedio se ve arrastrado por los casos extremos; la mediana describe mejor a la entrega típica."
+    },
+    {
+      "clave": "retraso_mediano",
+      "titulo": "Retraso mediano",
+      "valor": 7.3,
+      "unidad": "min",
+      "semaforo": "VERDE",
+      "lectura": "La mitad de las entregas se retrasa menos de 7.3 minutos. Al ser menor que el promedio, confirma que unas pocas entregas muy retrasadas distorsionan la media."
+    },
+    {
+      "clave": "km_totales",
+      "titulo": "Kilómetros recorridos",
+      "valor": 263011.3,
+      "unidad": "km",
+      "semaforo": "NEUTRO",
+      "lectura": "La flotilla recorrió 263,011 km en 2,924 viajes finalizados, un promedio de 90 km por viaje."
+    },
+    {
+      "clave": "costo_combustible",
+      "titulo": "Costo de combustible",
+      "valor": 1277755.73,
+      "unidad": "MXN",
+      "semaforo": "NEUTRO",
+      "lectura": "$1,277,756 en 50,559 litros. Es el costo variable principal de la operación y el que más rápido responde a cambios en el diseño de las rutas."
+    },
+    {
+      "clave": "costo_por_km",
+      "titulo": "Costo por kilómetro",
+      "valor": 4.86,
+      "unidad": "MXN/km",
+      "semaforo": "NEUTRO",
+      "lectura": "Cada kilómetro cuesta $4.86 en combustible. Es el indicador que permite comparar vehículos de distinto tamaño y antigüedad en igualdad de condiciones."
+    },
+    {
+      "clave": "rendimiento_flotilla",
+      "titulo": "Rendimiento de la flotilla",
+      "valor": 6.43,
+      "unidad": "km/l",
+      "semaforo": "AMARILLO",
+      "lectura": "El rendimiento real promedio es de 6.43 km/l, 7.3% por debajo del nominal de fábrica (6.93 km/l). Una brecha creciente suele anticipar necesidad de mantenimiento."
+    },
+    {
+      "clave": "vehiculos_mantenimiento",
+      "titulo": "Vehículos en mantenimiento",
+      "valor": 4,
+      "unidad": "vehículos",
+      "semaforo": "VERDE",
+      "lectura": "4 de 20 vehículos (20%) están fuera de operación por mantenimiento vencido, y su carga debe redistribuirse entre el resto."
+    },
+    {
+      "clave": "incidentes",
+      "titulo": "Incidentes del periodo",
+      "valor": 350,
+      "unidad": "incidentes",
+      "semaforo": "NEUTRO",
+      "lectura": "350 incidentes registrados, que acumulan 38,778 minutos perdidos (646 horas) en las entregas afectadas."
+    }
+  ]
+}

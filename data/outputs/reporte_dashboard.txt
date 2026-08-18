@@ -1,0 +1,154 @@
+==============================================================================
+  SIG-LOG · DASHBOARD (PA-10)
+==============================================================================
+  Generado: 2026-08-18 06:19 UTC
+  Datos SIMULADOS con fines académicos (decisión C-02). Ninguna cifra describe una empresa real.
+
+  Leyendo el data warehouse...
+  14,287 entregas · 20 rutas · 20 vehículos · 24 operadores
+
+==============================================================================
+  PANEL A — TABLERO EJECUTIVO  (10 indicadores)
+==============================================================================
+  Archivo: data\outputs\panel_a_kpis.png  (94 KB)
+
+      · Entregas del periodo: 14,779 entregas registradas en 155 días de
+        operación (92 al día). De ellas, 14,287 tienen datos completos y
+        sostienen todos los indicadores siguientes.
+
+      · Entregas a tiempo: 72.2% de las entregas llegaron dentro del umbral de
+        15 minutos, por debajo de la meta del 85%. Son 3,978 entregas retrasadas
+        (27.8%) sobre las que actuar.
+
+      · Retraso promedio: El retraso promedio es de 8.6 minutos, contra una meta
+        de 10. El promedio se ve arrastrado por los casos extremos; la mediana
+        describe mejor a la entrega típica.
+
+      · Retraso mediano: La mitad de las entregas se retrasa menos de 7.3
+        minutos. Al ser menor que el promedio, confirma que unas pocas entregas
+        muy retrasadas distorsionan la media.
+
+      · Kilómetros recorridos: La flotilla recorrió 263,011 km en 2,924 viajes
+        finalizados, un promedio de 90 km por viaje.
+
+      · Costo de combustible: $1,277,756 en 50,559 litros. Es el costo variable
+        principal de la operación y el que más rápido responde a cambios en el
+        diseño de las rutas.
+
+      · Costo por kilómetro: Cada kilómetro cuesta $4.86 en combustible. Es el
+        indicador que permite comparar vehículos de distinto tamaño y antigüedad
+        en igualdad de condiciones.
+
+      · Rendimiento de la flotilla: El rendimiento real promedio es de 6.43
+        km/l, 7.3% por debajo del nominal de fábrica (6.93 km/l). Una brecha
+        creciente suele anticipar necesidad de mantenimiento.
+
+      · Vehículos en mantenimiento: 4 de 20 vehículos (20%) están fuera de
+        operación por mantenimiento vencido, y su carga debe redistribuirse
+        entre el resto.
+
+      · Incidentes del periodo: 350 incidentes registrados, que acumulan 38,778
+        minutos perdidos (646 horas) en las entregas afectadas.
+
+
+==============================================================================
+  PANEL B — DASHBOARD ANALÍTICO  (6 gráficas)
+==============================================================================
+  Archivo: data\outputs\panel_b_analitico.png  (410 KB)
+
+      · El retraso tiene media 8.6 min y mediana 7.3 min. Que la media supere a
+        la mediana (asimetría 2.04) indica una cola de entregas muy retrasadas
+        que arrastra el promedio: el 27.8% supera el umbral de 15 minutos, pero
+        la entrega típica se retrasa mucho menos.
+
+      · La ruta con mayor retraso mediano es RUT-004, con 13.0 minutos, 78% por
+        encima de la mediana de la flotilla (7.3 min). El boxplot muestra además
+        la dispersión: una ruta con caja alta es sistemáticamente lenta, y una
+        con bigotes largos es impredecible, que es un problema distinto.
+
+      · La franja pico matutino concentra el mayor retraso medio (11.1 min),
+        frente a 1.5 min de la mejor franja. La forma del violín importa: donde
+        el cuerpo es ancho y alto, el retraso no es un caso aislado sino el
+        comportamiento habitual de esa franja.
+
+      · La mayor saturación ocurre en valle de Lun, con 1,288 entregas (9.0% del
+        total). Esa franja no es la de menor retraso: mover parte de la carga a
+        madrugada, que promedia 1.5 min frente a 7.2, es la palanca más directa
+        sobre el retraso.
+
+      · La operación promedia 92 entregas diarias, con un máximo de 100 el
+        2026-02-04. La correlación entre volumen diario y retraso medio es 0.20:
+        los días de más volumen sí tienden a retrasarse más, así que repartir la
+        carga entre días alivia el retraso.
+
+      · Una sola de las 6 causas concentra el 89% de las entregas retrasadas:
+        trafico, con 3,548 entregas (89%). Concentrar el esfuerzo en esa única
+        causa rinde más que repartirlo entre todas.
+
+
+==============================================================================
+  PANEL C — RESULTADOS DE MACHINE LEARNING  (4 gráficas)
+==============================================================================
+  Archivo: data\outputs\panel_c_machine_learning.png  (287 KB)
+
+      · Se evaluaron k de 2 a 8. La inercia siempre decrece, así que el codo por
+        sí solo no decide; la silueta sí tiene máximo. Descartando las k que
+        dejan grupos de una sola ruta, el mejor valor es k=4 con silueta 0.403.
+
+      · El agrupamiento separa las 20 rutas en 4 perfiles operativos (silueta
+        0.403). El grupo crítico reúne 4 rutas: RUT-004, RUT-005, RUT-006,
+        RUT-008. Son recorridos largos que además acumulan retraso, y por eso
+        concentran la prioridad de rediseño.
+
+      · El modelo estima el retraso con un error típico de 9.3 minutos y explica
+        el 73.3% de su variación. Los puntos por debajo de la diagonal en la
+        zona alta muestran su límite conocido: subestima los retrasos extremos,
+        así que la estimación debe acompañarse siempre de la alerta del
+        clasificador.
+
+
+==============================================================================
+  PANEL D — VISTAS OPERATIVAS POR MÓDULO  (4 gráficas)
+==============================================================================
+  Archivo: data\outputs\panel_d_operativo.png  (251 KB)
+
+      · La ruta más utilizada es RUT-015, con 1,127 entregas. Ninguna supera en
+        promedio el umbral de 15 minutos: el retraso de la operación no proviene
+        de las rutas de mayor volumen, sino de rutas concretas con problemas
+        propios.
+
+      · VEH-014 es el vehículo más costoso del periodo ($171,036, $9.33 por km).
+        El de mayor desviación de rendimiento es VEH-014: 3.12 km/l reales
+        frente a 3.97 nominales (-21.4%), señal de revisión mecánica antes que
+        de reemplazo.
+
+      · El operador más puntual es OPE-022 con 76.4% de entregas a tiempo; el
+        menor es OPE-007 con 69.0%. El rango es de solo 7.4 puntos, así que el
+        retraso NO se explica principalmente por quién conduce: buscarlo en la
+        ruta y el horario es más productivo que en el desempeño individual.
+
+      · Al cierre del periodo, el vehículo con más tiempo sin servicio es
+        VEH-004, con 29 días. Ninguno rebasa el umbral de 30 días, así que el
+        programa de mantenimiento está al corriente al cierre del periodo.
+
+
+==============================================================================
+  VERIFICACIONES AUTOMÁTICAS
+==============================================================================
+  [OK]    Los cuatro paneles fueron generados                 A, B, C, D
+  [OK]    Panel A: archivo escrito y con contenido            94 KB
+  [OK]    Panel A: toda gráfica trae interpretación (RF-29)   10 lecturas
+  [OK]    Panel B: archivo escrito y con contenido            410 KB
+  [OK]    Panel B: toda gráfica trae interpretación (RF-29)   6 lecturas
+  [OK]    Panel C: archivo escrito y con contenido            287 KB
+  [OK]    Panel C: toda gráfica trae interpretación (RF-29)   4 lecturas
+  [OK]    Panel D: archivo escrito y con contenido            251 KB
+  [OK]    Panel D: toda gráfica trae interpretación (RF-29)   4 lecturas
+------------------------------------------------------------------------------
+  9/9 verificaciones correctas
+
+==============================================================================
+  DASHBOARD GENERADO.
+  Las interpretaciones de este reporte alimentan el PDF y las
+  vistas del sistema web.
+==============================================================================
