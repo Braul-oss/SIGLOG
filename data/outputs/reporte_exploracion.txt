@@ -1,85 +1,361 @@
   Extrayendo colecciones desde MongoDB Atlas...
 
 ==============================================================================
-  ERROR DURANTE LA EXPLORACIÓN
+  SIG-LOG · EXPLORACIÓN DE DATOS (EDA) — EVIDENCIA DE LA UNIDAD I
 ==============================================================================
-Traceback (most recent call last):
-  File "C:\proyectos_utvt\SIGLOG\etl\exploracion.py", line 399, in main
-    dataframes = extraccion.extraer_operativas(bd)
-  File "C:\proyectos_utvt\SIGLOG\etl\extraccion.py", line 64, in extraer_operativas
-    df = extraer(coleccion, bd=base)
-  File "C:\proyectos_utvt\SIGLOG\etl\extraccion.py", line 55, in extraer
-    documentos = list(base[coleccion].find(filtro or {}))
-  File "C:\Users\lenov\miniconda3\Lib\site-packages\pymongo\synchronous\cursor.py", line 1289, in __next__
-    return self.next()
-           ~~~~~~~~~^^
-  File "C:\Users\lenov\miniconda3\Lib\site-packages\pymongo\synchronous\cursor.py", line 1265, in next
-    if len(self._data) or self._refresh():
-                          ~~~~~~~~~~~~~^^
-  File "C:\Users\lenov\miniconda3\Lib\site-packages\pymongo\synchronous\cursor.py", line 1236, in _refresh
-    self._send_message(g)
-    ~~~~~~~~~~~~~~~~~~^^^
-  File "C:\Users\lenov\miniconda3\Lib\site-packages\pymongo\synchronous\cursor.py", line 1108, in _send_message
-    response = client._run_operation(
-        operation, self._unpack_response, address=self._address
-    )
-  File "C:\Users\lenov\miniconda3\Lib\site-packages\pymongo\_csot.py", line 125, in csot_wrapper
-    return func(self, *args, **kwargs)
-  File "C:\Users\lenov\miniconda3\Lib\site-packages\pymongo\synchronous\mongo_client.py", line 1938, in _run_operation
-    return self._retryable_read(
-           ~~~~~~~~~~~~~~~~~~~~^
-        _cmd,
-        ^^^^^
-    ...<4 lines>...
-        operation=operation.name,
-        ^^^^^^^^^^^^^^^^^^^^^^^^^
-    )
-    ^
-  File "C:\Users\lenov\miniconda3\Lib\site-packages\pymongo\synchronous\mongo_client.py", line 2047, in _retryable_read
-    return self._retry_internal(
-           ~~~~~~~~~~~~~~~~~~~~^
-        func,
-        ^^^^^
-    ...<7 lines>...
-        operation_id=operation_id,
-        ^^^^^^^^^^^^^^^^^^^^^^^^^^
-    )
-    ^
-  File "C:\Users\lenov\miniconda3\Lib\site-packages\pymongo\_csot.py", line 125, in csot_wrapper
-    return func(self, *args, **kwargs)
-  File "C:\Users\lenov\miniconda3\Lib\site-packages\pymongo\synchronous\mongo_client.py", line 2014, in _retry_internal
-    ).run()
-      ~~~^^
-  File "C:\Users\lenov\miniconda3\Lib\site-packages\pymongo\synchronous\mongo_client.py", line 2765, in run
-    return self._read() if self._is_read else self._write()
-           ~~~~~~~~~~^^
-  File "C:\Users\lenov\miniconda3\Lib\site-packages\pymongo\synchronous\mongo_client.py", line 2926, in _read
-    return self._func(self._session, self._server, conn, read_pref)  # type: ignore
-           ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "C:\Users\lenov\miniconda3\Lib\site-packages\pymongo\synchronous\mongo_client.py", line 1929, in _cmd
-    return server.run_operation(
-           ~~~~~~~~~~~~~~~~~~~~^
-        conn,
-        ^^^^^
-    ...<4 lines>...
-        self,
-        ^^^^^
-    )
-    ^
-  File "C:\Users\lenov\miniconda3\Lib\site-packages\pymongo\synchronous\helpers.py", line 47, in inner
-    return func(*args, **kwargs)
-  File "C:\Users\lenov\miniconda3\Lib\site-packages\pymongo\synchronous\server.py", line 208, in run_operation
-    reply = conn.receive_message(request_id)
-  File "C:\Users\lenov\miniconda3\Lib\site-packages\pymongo\synchronous\pool.py", line 469, in receive_message
-    self._raise_connection_failure(error)
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^
-  File "C:\Users\lenov\miniconda3\Lib\site-packages\pymongo\synchronous\pool.py", line 466, in receive_message
-    return receive_message(self, request_id, self.max_message_size)
-  File "C:\Users\lenov\miniconda3\Lib\site-packages\pymongo\network_layer.py", line 778, in receive_message
-    data = receive_data(conn, length - 16, deadline)
-  File "C:\Users\lenov\miniconda3\Lib\site-packages\pymongo\network_layer.py", line 343, in receive_data
-    wait_for_read(conn, deadline)
-    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^
-  File "C:\Users\lenov\miniconda3\Lib\site-packages\pymongo\network_layer.py", line 318, in wait_for_read
-    raise _OperationCancelled("operation cancelled")
-pymongo.errors._OperationCancelled: operation cancelled
+  Los datos analizados son SIMULADOS (decisión C-02).
+  Ninguna cifra describe una empresa real.
+
+==============================================================================
+  1 · VISIÓN GENERAL DE LOS DATOS DE ORIGEN
+==============================================================================
+     coleccion  documentos  columnas  memoria_mb
+      entregas       14851        29       14.67
+        viajes        2956        22        1.37
+   combustible        1379        17        0.63
+    incidentes         350        18        0.29
+mantenimientos         120        16        0.06
+      clientes         100        12        0.05
+    operadores          24        13        0.01
+         rutas          20        17        0.02
+     vehiculos          20        20        0.01
+
+  Colecciones con datos ... 9
+  Documentos totales ...... 19,820
+  Memoria en pandas ....... 17.11 MB
+
+  Nota: el volumen total está muy por debajo del umbral en que un
+  motor distribuido aporta ventaja. Se procesa con pandas (decisión C-03).
+
+==============================================================================
+  2 · ESTRUCTURA DE `entregas`  (equivale a printSchema de Spark)
+==============================================================================
+  Dimensiones: 14,851 filas × 29 columnas
+
+    #  COLUMNA                     TIPO PANDAS         NO NULOS
+------------------------------------------------------------------------------
+    1  _id                         object                14,851
+    2  folio_entrega               object                14,851
+    3  viaje_id                    object                14,851
+    4  ruta_id                     object                14,851
+    5  cliente_id                  object                14,851
+    6  nombre_cliente              object                14,851
+    7  vehiculo_id                 object                14,851
+    8  placa                       object                14,851
+    9  operador_id                 object                14,851
+   10  nombre_operador             object                14,851
+   11  orden_parada                int64                 14,851
+   12  fecha                       datetime64[ns, FixedOffset(datetime.timedelta(0), 'UTC')]    14,851
+   13  hora_estimada_llegada       datetime64[ns, FixedOffset(datetime.timedelta(0), 'UTC')]    14,851
+   14  hora_real_llegada           datetime64[ns, FixedOffset(datetime.timedelta(0), 'UTC')]    14,357
+   15  hora_estimada_recalculada   object                     0
+   16  tiempo_estimado_min         float64               14,851
+   17  tiempo_real_min             float64               14,357
+   18  retraso_min                 float64               14,357
+   19  es_retraso                  float64               14,357
+   20  distancia_km                float64               14,851
+   21  estatus                     object                14,851
+   22  historial_estatus           object                14,851
+   23  incidentes_ids              object                14,851
+   24  causa_retraso               object                 4,150
+   25  observaciones               object                 2,625
+   26  origen_dato                 object                14,851
+   27  activo                      bool                  14,851
+   28  fecha_creacion              datetime64[ns, FixedOffset(datetime.timedelta(0), 'UTC')]    14,851
+   29  fecha_modificacion          datetime64[ns, FixedOffset(datetime.timedelta(0), 'UTC')]    14,851
+
+--- PRIMERAS FILAS (equivale a df.show()) -----------------------------------
+     folio_entrega                     fecha                     nombre_cliente  orden_parada  tiempo_estimado_min  tiempo_real_min  retraso_min  es_retraso   estatus
+ENT-20260202-00001 2026-02-02 00:00:00+00:00   Distribuidora Colón S.A. de C.V.             1                 25.7             23.4         -1.3         0.0 ENTREGADA
+ENT-20260202-00002 2026-02-02 00:00:00+00:00 Distribuidora La Merced S. de R.L.             2                 43.8             52.1          7.0         0.0 ENTREGADA
+ENT-20260202-00003 2026-02-02 00:00:00+00:00     Almacenes La Aurora S. de R.L.             3                 51.4             53.0          8.7         0.0 ENTREGADA
+ENT-20260202-00004 2026-02-02 00:00:00+00:00              Abarrotes El Progreso             4                 25.7             25.5          8.5         0.0 ENTREGADA
+ENT-20260202-00005 2026-02-02 00:00:00+00:00        Vidrios Santa Fe S. de R.L.             5                 17.9             16.2          6.7         0.0 ENTREGADA
+ENT-20260202-00006 2026-02-02 00:00:00+00:00                  Bodega San Miguel             6                 54.3             46.2         -1.4         0.0 ENTREGADA
+ENT-20260202-00007 2026-02-02 00:00:00+00:00               Farmacia La Purísima             1                 66.5             79.5         20.0         1.0 ENTREGADA
+ENT-20260202-00008 2026-02-02 00:00:00+00:00                Textiles El Cerrito             2                 37.7             33.8         16.2         1.0 ENTREGADA
+
+==============================================================================
+  3 · TIPOS DE DATOS EN `entregas`  (insumo de la Unidad II)
+==============================================================================
+
+  ESTRUCTURADO  (26 columnas)
+      _id                         6a838e760f0c7319bce3ef6e
+      folio_entrega               ENT-20260202-00001
+      viaje_id                    6a838e760f0c7319bce3ef6d
+      ruta_id                     6a83893489a0d3691e054f67
+      cliente_id                  6a83893489a0d3691e054ed7
+      nombre_cliente              Distribuidora Colón S.A. de C.V.
+      vehiculo_id                 6a83893489a0d3691e054f47
+      placa                       YTC-761
+      operador_id                 6a83893489a0d3691e054f5a
+      nombre_operador             Gerardo Hernández Ortega
+      orden_parada                1
+      fecha                       2026-02-02 00:00:00+00:00
+      hora_estimada_llegada       2026-02-02 06:55:42+00:00
+      hora_real_llegada           2026-02-02 06:54:26.144000+00:00
+      hora_estimada_recalculada   —
+      tiempo_estimado_min         25.7
+      tiempo_real_min             23.4
+      retraso_min                 -1.3
+      es_retraso                  0.0
+      distancia_km                6.1
+      estatus                     ENTREGADA
+      causa_retraso               TRAFICO
+      origen_dato                 SIMULADO
+      activo                      True
+      fecha_creacion              2026-08-17 22:43:02.579000+00:00
+      fecha_modificacion          2026-08-17 22:43:02.579000+00:00
+
+  SEMIESTRUCTURADO  (2 columnas)
+      historial_estatus           [{'estatus': 'PROGRAMADA', 'fecha_hora': datetime.da
+      incidentes_ids              []
+
+  NO ESTRUCTURADO  (1 columnas)
+      observaciones               Firma de recibido ilegible
+
+  El ETL deberá aplanar lo semiestructurado (PA-6) y decidir qué
+  hacer con el texto libre, que no entra directo a un modelo.
+
+==============================================================================
+  4 · ANÁLISIS DE COLUMNAS Y VALORES DE `entregas`
+==============================================================================
+                  columna                                                      tipo  nulos  %nulos  unicos  cardinalidad
+                      _id                                                    object      0     0.0   14851        1.0000
+            folio_entrega                                                    object      0     0.0   14851        1.0000
+                 viaje_id                                                    object      0     0.0    2956        0.1990
+                  ruta_id                                                    object      0     0.0      20        0.0013
+               cliente_id                                                    object      0     0.0     100        0.0067
+           nombre_cliente                                                    object      0     0.0     100        0.0067
+              vehiculo_id                                                    object      0     0.0      20        0.0013
+                    placa                                                    object      0     0.0      20        0.0013
+              operador_id                                                    object      0     0.0      24        0.0016
+          nombre_operador                                                    object      0     0.0      24        0.0016
+             orden_parada                                                     int64      0     0.0       8        0.0005
+                    fecha datetime64[ns, FixedOffset(datetime.timedelta(0), 'UTC')]      0     0.0     155        0.0104
+    hora_estimada_llegada datetime64[ns, FixedOffset(datetime.timedelta(0), 'UTC')]      0     0.0   14351        0.9663
+        hora_real_llegada datetime64[ns, FixedOffset(datetime.timedelta(0), 'UTC')]    494     3.3   14287        0.9620
+hora_estimada_recalculada                                                    object  14851   100.0       0        0.0000
+      tiempo_estimado_min                                                   float64      0     0.0      92        0.0062
+          tiempo_real_min                                                   float64    494     3.3     894        0.0602
+              retraso_min                                                   float64    494     3.3    1094        0.0737
+               es_retraso                                                   float64    494     3.3       2        0.0001
+             distancia_km                                                   float64      0     0.0      81        0.0055
+                  estatus                                                    object      0     0.0       3        0.0002
+        historial_estatus                                                    object      0     0.0   14643        0.9860
+           incidentes_ids                                                    object      0     0.0     351        0.0236
+            causa_retraso                                                    object  10701    72.1       6        0.0004
+            observaciones                                                    object  12226    82.3      10        0.0007
+              origen_dato                                                    object      0     0.0       1        0.0001
+                   activo                                                      bool      0     0.0       1        0.0001
+           fecha_creacion datetime64[ns, FixedOffset(datetime.timedelta(0), 'UTC')]      0     0.0    1478        0.0995
+       fecha_modificacion datetime64[ns, FixedOffset(datetime.timedelta(0), 'UTC')]      0     0.0    1478        0.0995
+
+--- HALLAZGOS AUTOMÁTICOS ---------------------------------------------------
+  Columnas totalmente vacías: ['hora_estimada_recalculada']
+      → campo previsto en el diseño que la operación nunca llenó.
+  Columnas constantes (1 solo valor): ['origen_dato', 'activo']
+      → no aportan información a ningún modelo; se descartan en PA-6.
+  Columnas identificadoras (cardinalidad > 0.95): ['_id', 'folio_entrega', 'hora_estimada_llegada', 'hora_real_llegada', 'historial_estatus']
+      → sirven para unir tablas, no como variables predictoras.
+  Columnas con nulos: 7
+      hora_estimada_recalculada     14851 (100.0%)
+      observaciones                 12226 (82.3%)
+      causa_retraso                 10701 (72.1%)
+      tiempo_real_min                 494 (3.3%)
+      hora_real_llegada               494 (3.3%)
+      es_retraso                      494 (3.3%)
+      retraso_min                     494 (3.3%)
+
+==============================================================================
+  5 · RESUMEN ESTADÍSTICO  (equivale a describe de Spark)
+==============================================================================
+
+--- VARIABLES NUMÉRICAS -----------------------------------------------------
+                       count   mean    std   min   25%   50%   75%    max
+orden_parada         14851.0   3.13   1.64   1.0   2.0   3.0   4.0    8.0
+tiempo_estimado_min  14851.0  49.93  17.19  17.9  35.1  50.2  63.1   86.3
+tiempo_real_min      14357.0  48.35  18.33  14.7  33.7  47.3  60.2  120.2
+retraso_min          14357.0   8.64  17.93 -57.6  -1.5   7.3  16.4  204.3
+es_retraso           14357.0   0.28   0.45   0.0   0.0   0.0   1.0    1.0
+distancia_km         14851.0  14.39   6.44   3.6   8.8  15.4  20.0   24.9
+
+--- VARIABLES CATEGÓRICAS ---------------------------------------------------
+
+  estatus  (3 categorías)
+      ENTREGADA                 14,660    98.7%
+      CANCELADA                    165     1.1%
+      NO_ENTREGADA                  26     0.2%
+
+  causa_retraso  (6 categorías)
+      TRAFICO                    3,662    24.7%
+      CLIMA                        178     1.2%
+      ACCIDENTE                    139     0.9%
+      CLIENTE_AUSENTE               80     0.5%
+      FALLA_VEHICULO                57     0.4%
+      PROTESTA                      34     0.2%
+
+  origen_dato  (1 categorías)
+      SIMULADO                  14,851   100.0%
+
+==============================================================================
+  6 · VALORES NULOS
+==============================================================================
+  COLUMNA                         NULOS        %
+------------------------------------------------------------------------------
+  hora_estimada_recalculada      14,851   100.0%
+  observaciones                  12,226    82.3%
+  causa_retraso                  10,701    72.1%
+  tiempo_real_min                   494     3.3%
+  hora_real_llegada                 494     3.3%
+  es_retraso                        494     3.3%
+  retraso_min                       494     3.3%
+
+--- ¿SON NULOS ALEATORIOS O TIENEN PATRÓN? ----------------------------------
+  Entregas sin hora real, por estatus:
+              sin_hora  total      %
+estatus                             
+CANCELADA          165    165  100.0
+ENTREGADA          329  14660    2.2
+NO_ENTREGADA         0     26    0.0
+
+  Lectura: los nulos de las entregas CANCELADAS son legítimos
+  (nunca ocurrieron). Los del resto son captura omitida y sí
+  requieren una decisión de limpieza en PA-5.
+
+==============================================================================
+  7 · VARIABLE OBJETIVO  `retraso_min` / `es_retraso`
+==============================================================================
+  Registros utilizables .... 14,357 de 14,851
+  Media .................... 8.64 min
+  Mediana .................. 7.30 min
+  Desviación estándar ...... 17.93 min
+  Mínimo / Máximo .......... -57.6 / 204.3 min
+  Asimetría (skew) ......... 2.035
+  Curtosis ................. 13.215
+
+--- CUARTILES (equivale a approxQuantile) -----------------------------------
+  Q1 -1.50  ·  Q2 7.30  ·  Q3 16.40  ·  IQR 17.90
+  Límites IQR: -28.35 a 43.25
+  Fuera de límites: 560 (3.9%)
+
+--- DISTRIBUCIÓN POR TRAMOS -------------------------------------------------
+      adelantada      4,120   28.7%  ###########
+      0-5             2,101   14.6%  #####
+      5-15            4,145   28.9%  ###########
+      15-30           2,880   20.1%  ########
+      30-60             918    6.4%  ##
+      más de 60         193    1.3%  
+
+  Clasificación binaria (umbral RNP-01 > 15 min)
+      es_retraso = 1 ... 3,991 (27.8%)
+      es_retraso = 0 ... 10,366 (72.2%)
+      Razón de desbalance: 2.60 : 1
+      Aceptable. Aun así, PA-8 debe reportar recall y F1, no solo accuracy.
+
+==============================================================================
+  8 · EXPLORACIÓN DIRIGIDA  (¿hay señal en los datos?)
+==============================================================================
+
+--- RETRASO POR HORA ESTIMADA DE LLEGADA ------------------------------------
+      count   mean
+hora              
+6       717   1.49
+7      1149   6.08
+8      2292  10.10
+9      2880  13.96
+10     3006   8.77
+11     2169   7.01
+12     1143   8.63
+13      431   4.03
+14      287   1.84
+15      142  -3.27
+16      141  -4.72
+  → si la hora pico no se distinguiera, el modelo no tendría qué aprender.
+
+--- RETRASO POR DÍA DE LA SEMANA --------------------------------------------
+           count   mean
+lunes       2525  14.77
+martes      2356   6.28
+miércoles   2435   5.73
+jueves      2346   8.11
+viernes     2422  18.27
+sábado      2273  -2.35
+
+--- RETRASO POR ORDEN DE PARADA  (efecto de acumulación) --------------------
+              count   mean
+orden_parada              
+1              2865   9.54
+2              2869  11.82
+3              2874  10.51
+4              2715   7.07
+5              1736   6.27
+6              1015   3.51
+7               142  -3.27
+8               141  -4.72
+  → el retraso debe CRECER con el orden: la parada 6 hereda el de las
+    anteriores (Anexo B.4). Si bajara, el modelo tendría un defecto.
+
+--- MISMO ANÁLISIS, CONTROLANDO LA LONGITUD DE LA RUTA ----------------------
+  El promedio global mezcla rutas de distinta longitud: solo las
+  rutas largas llegan a la parada 7 u 8. Se aísla el efecto:
+      Rutas de 3 paradas: [np.float64(0.5), np.float64(3.8), np.float64(7.1)]
+      Rutas de 4 paradas: [np.float64(10.1), np.float64(12.5), np.float64(9.1), np.float64(2.9)]
+      Rutas de 5 paradas: [np.float64(8.2), np.float64(10.4), np.float64(10.0), np.float64(8.2), np.float64(3.5)]
+      Rutas de 6 paradas: [np.float64(10.5), np.float64(13.4), np.float64(13.0), np.float64(10.8), np.float64(9.1), np.float64(4.0)]
+      Rutas de 8 paradas: [np.float64(16.1), np.float64(12.9), np.float64(10.7), np.float64(7.3), np.float64(3.0), np.float64(0.3), np.float64(-3.3), np.float64(-4.7)]
+  Controlado el efecto de longitud, la acumulación se ve limpia.
+
+--- CAUSAS DE RETRASO  (base del análisis de Pareto) ------------------------
+      TRAFICO               3,662   88.2%   acumulado  88.2%
+      CLIMA                   178    4.3%   acumulado  92.5%
+      ACCIDENTE               139    3.3%   acumulado  95.9%
+      CLIENTE_AUSENTE          80    1.9%   acumulado  97.8%
+      FALLA_VEHICULO           57    1.4%   acumulado  99.2%
+      PROTESTA                 34    0.8%   acumulado 100.0%
+
+--- CORRELACIÓN CON LA VARIABLE OBJETIVO ------------------------------------
+orden_parada          -0.139
+dia                   -0.125
+distancia_km           0.060
+hora                  -0.059
+tiempo_estimado_min    0.045
+
+  Correlaciones moderadas, no perfectas. Es lo esperado: hay señal
+  aprendible pero también ruido, y las relaciones más fuertes están
+  en variables que todavía no existen y que PA-6 debe derivar
+  (incidentes del viaje, retraso de salida, antigüedad del vehículo).
+
+==============================================================================
+  9 · CONCLUSIONES DE LA EXPLORACIÓN
+==============================================================================
+  1. El dataset tiene volumen suficiente para los mínimos de §16.2.
+  2. Existen nulos con dos orígenes distintos: legítimos (viajes
+     cancelados) y de captura. PA-5 debe tratarlos por separado.
+  3. Hay columnas semiestructuradas que el ETL debe aplanar y
+     texto libre que no entra directo a un modelo.
+  4. La variable objetivo muestra señal en hora, día y orden de
+     parada: hay algo que aprender, no solo ruido.
+  5. Los outliers por IQR incluyen retrasos legítimos por
+     incidentes graves. Recomendación: MARCARLOS, no eliminarlos.
+
+==============================================================================
+  ARCHIVOS GENERADOS
+==============================================================================
+  data\raw\clientes.csv                   43 KB
+  data\raw\vehiculos.csv                   6 KB
+  data\raw\operadores.csv                  8 KB
+  data\raw\rutas.csv                      25 KB
+  data\raw\viajes.csv                   1039 KB
+  data\raw\entregas.csv                12250 KB
+  data\raw\incidentes.csv                157 KB
+  data\raw\combustible.csv               363 KB
+  data\raw\mantenimientos.csv             39 KB
+  data\outputs\reporte_exploracion.txt
+
+  Los CSV de data/raw/ permiten trabajar el ETL sin conexión
+  y son el entregable 'repositorio con datos preprocesados'.
+
+==============================================================================
+  PA-4 TERMINADA. Siguiente actividad: PA-5 (limpieza, Unidad II).
+==============================================================================
