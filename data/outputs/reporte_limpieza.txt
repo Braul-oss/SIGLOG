@@ -1,0 +1,68 @@
+
+==============================================================================
+  SIG-LOG · LIMPIEZA DE DATOS (PA-5) — EVIDENCIA DE LA UNIDAD II
+==============================================================================
+  Los datos analizados son SIMULADOS (decisión C-02).
+
+  Extrayendo `entregas` desde MongoDB Atlas...
+
+==============================================================================
+  1 · DUPLICADOS POR DOBLE CAPTURA  (D-L1)
+==============================================================================
+  Filas de entrada ........... 14,851
+  Copias eliminadas .......... 72
+  Ejemplos de folio retirado . ENT-20260731-00072-D, ENT-20260630-00038-D, ENT-20260410-00042-D
+  Filas tras la limpieza ..... 14,779
+
+==============================================================================
+  2 · CLASIFICACIÓN DE NULOS  (D-L2 / D-L3)
+==============================================================================
+  OK                14,287  (96.7%)  completas: dataset de análisis y ML
+  SIN_HORA_REAL        327  (2.2%)  captura omitida: se conservan marcadas, fuera del ML
+  NULO_LEGITIMO        165  (1.1%)  canceladas: el nulo es correcto, no se imputa
+
+==============================================================================
+  3 · IMPUTACIÓN CATEGÓRICA  (D-L4)
+==============================================================================
+  causa_retraso = NINGUNA en 10,151 entregas a tiempo.
+  El nulo ahí significaba 'no aplica', no 'se desconoce'.
+
+==============================================================================
+  4 · OUTLIERS MARCADOS, NO ELIMINADOS  (D-L5)
+==============================================================================
+  Q1 -1.5 · Q3 16.4 · IQR 17.9 · límites -28.3 a 43.2 min
+  Marcados con es_outlier_iqr = 1: 559
+  Motivo (conclusión 5 de PA-4): incluyen retrasos legítimos por
+  incidentes graves, justo los casos que el modelo debe conocer.
+
+==============================================================================
+  5 · VALIDACIÓN DE CATÁLOGOS  (RNP-08 / RNP-12)
+==============================================================================
+  estatus                     OK
+  causa_retraso               OK
+
+==============================================================================
+  6 · VERIFICACIONES AUTOMÁTICAS
+==============================================================================
+  [OK]    Sin duplicados por clave de negocio       0 restantes
+  [OK]    Conteo de filas = entrada − duplicados    14,779 de 14,779 esperadas
+  [OK]    Filas OK sin nulos en columnas de llegada 0 filas OK con nulos
+  [OK]    Toda CANCELADA marcada NULO_LEGITIMO      0 mal clasificadas
+  [OK]    Sin causa nula en entregas a tiempo OK    0 sin imputar
+  [OK]    Valores dentro de catálogo (RNP-08/12)    0 valores fuera de catálogo
+  [OK]    Ningún outlier eliminado (D-L5)           columna de marca presente
+------------------------------------------------------------------------------
+  7/7 verificaciones correctas
+
+==============================================================================
+  ARCHIVOS GENERADOS
+==============================================================================
+  data\processed\entregas_limpias.csv        12309 KB
+  data\outputs\reporte_limpieza.txt
+
+  PA-6 debe leerlo con etl.limpieza.cargar_entregas_limpias()
+  para recuperar los tipos correctos.
+
+==============================================================================
+  PA-5 TERMINADA. Siguiente actividad: PA-6 (transformación).
+==============================================================================
