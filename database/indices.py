@@ -117,9 +117,18 @@ INDICES: dict[str, list[dict[str, Any]]] = {
         {"claves": [("viaje_id", ASCENDING), ("fecha_hora", ASCENDING)], "nombre": "ix_seguimiento_viaje_fecha"},
         {"claves": [("tipo_evento", ASCENDING)], "nombre": "ix_seguimiento_tipo_evento"},
     ],
-    # Las colecciones analíticas no tienen índices declarados en el documento
-    # técnico. Se definirán en la actividad de ETL, cuando exista el esquema
-    # definitivo de hecho_entrega y de las dimensiones.
+    # ---------------- hecho_entrega (esquema fijado en la carga del DW) ------
+    # Las dimensiones no llevan índices adicionales: se consultan por _id.
+    "hecho_entrega": [
+        {"claves": [("folio_entrega", ASCENDING)], "nombre": "ux_hecho_folio", "unico": True},
+        {"claves": [("fecha_id", ASCENDING)], "nombre": "ix_hecho_fecha"},
+        {"claves": [("ruta_id", ASCENDING), ("fecha_id", ASCENDING)], "nombre": "ix_hecho_ruta_fecha"},
+        {"claves": [("vehiculo_id", ASCENDING)], "nombre": "ix_hecho_vehiculo"},
+        {"claves": [("operador_id", ASCENDING)], "nombre": "ix_hecho_operador"},
+        {"claves": [("cliente_id", ASCENDING)], "nombre": "ix_hecho_cliente"},
+        {"claves": [("es_retraso", ASCENDING)], "nombre": "ix_hecho_es_retraso"},
+        {"claves": [("calidad_dato", ASCENDING)], "nombre": "ix_hecho_calidad"},
+    ],
 }
 
 

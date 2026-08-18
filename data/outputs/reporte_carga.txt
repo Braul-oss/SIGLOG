@@ -1,0 +1,25 @@
+
+==============================================================================
+  SIG-LOG · CARGA DEL DATA WAREHOUSE (PA-7) — UNIDAD II
+==============================================================================
+  Los datos cargados son SIMULADOS (decisión C-02).
+
+  Ejecutando el pipeline (limpieza + transformación de PA-5/PA-6)...
+
+==============================================================================
+  1 · MODELO DIMENSIONAL CONSTRUIDO
+==============================================================================
+  COLECCIÓN            FILAS   COLUMNAS
+------------------------------------------------------------------------------
+  hecho_entrega       14,779         34
+  dim_tiempo             155         10
+  dim_cliente            100          7
+  dim_vehiculo            20         19
+  dim_operador            24         10
+  dim_ruta                20         15
+
+  --dry-run activo: no se escribió nada en MongoDB.
+
+==============================================================================
+  PA-7 TERMINADA. El DW está listo para KPIs, gráficas y ML.
+==============================================================================
