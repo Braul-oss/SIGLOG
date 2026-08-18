@@ -149,6 +149,42 @@ CATALOGO_TIPOS_INCIDENTE: tuple[str, ...] = (
 # --------------------------------------------------------------------------
 
 
+# ==========================================================================
+# API / BACKEND  (§12 del documento técnico)
+# --------------------------------------------------------------------------
+# Se declara aquí y no en backend/ por la regla del §9.1: `config/` guarda
+# la configuración y `backend/` no debe leer variables de entorno por su
+# cuenta. Así el API, el ETL y el ML comparten una única fuente de verdad.
+# ==========================================================================
+
+API_PREFIJO: str = "/api/v1"                    # §12.2: base de la API
+API_TITULO: str = "SIG-LOG API"
+API_DESCRIPCION: str = (
+    "API del Sistema Integral de Gestión de Transporte y Logística. "
+    "Expone la operación logística y los resultados de la capa analítica "
+    "(ETL, KPIs y modelos de Machine Learning). "
+    "Todos los datos son SIMULADOS con fines académicos."
+)
+
+API_HOST: str = os.getenv("API_HOST", "127.0.0.1")
+API_PUERTO: int = int(os.getenv("API_PUERTO", "8000"))
+# Recarga automática al guardar: cómoda en desarrollo, prohibida en producción.
+API_RECARGA: bool = _leer_bool("API_RECARGA", APP_ENTORNO == "desarrollo")
+
+# Orígenes permitidos por CORS. El frontend previsto es Jinja2 servido por
+# el mismo proceso de FastAPI (§8.2), de modo que en condiciones normales no
+# hace falta CORS. Se deja configurable para poder abrir un frontend en otro
+# puerto durante el desarrollo, con una lista explícita y nunca "*".
+CORS_ORIGENES: tuple[str, ...] = tuple(
+    origen.strip()
+    for origen in os.getenv(
+        "API_CORS_ORIGENES",
+        "http://localhost:8000,http://127.0.0.1:8000",
+    ).split(",")
+    if origen.strip()
+)
+
+
 # --------------------------------------------------------------------------
 # Construcción de la URI de conexión
 # --------------------------------------------------------------------------
@@ -220,4 +256,6 @@ def resumen_configuracion() -> dict[str, object]:
         "umbral_retraso_min": UMBRAL_RETRASO_MIN,
         "colecciones_operativas": len(COLECCIONES_OPERATIVAS),
         "colecciones_analiticas": len(COLECCIONES_ANALITICAS),
+        "api_prefijo": API_PREFIJO,
+        "api_direccion": f"http://{API_HOST}:{API_PUERTO}",
     }
