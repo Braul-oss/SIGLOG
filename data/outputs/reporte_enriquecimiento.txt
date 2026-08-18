@@ -1,0 +1,125 @@
+
+==============================================================================
+  SIG-LOG · ENRIQUECIMIENTO (PA-6) — EVIDENCIA DE LA UNIDAD II
+==============================================================================
+  Los datos analizados son SIMULADOS (decisión C-02).
+
+  Calculando métricas derivadas...
+
+==============================================================================
+  1 · MÉTRICAS POR VEHÍCULO  (rendimiento_real_km_l, §11.2)
+==============================================================================
+codigo_vehiculo tipo_vehiculo  km_recorridos  litros  rendimiento_nominal_km_l  rendimiento_real_km_l  desviacion_rendimiento_pct  costo_total_por_km
+        VEH-001       MEDIANO        15259.6 2181.91                      6.85                   6.99                         2.0                6.27
+        VEH-002        LIGERO        12126.6 1575.34                      8.45                   7.70                        -8.9                4.95
+        VEH-003       MEDIANO        15209.3 2648.49                      5.70                   5.74                         0.7                6.63
+        VEH-004       MEDIANO        15530.0 2931.96                      5.57                   5.30                        -4.8                6.37
+        VEH-005        LIGERO        11812.6 1224.73                     10.86                   9.65                       -11.1                6.81
+        VEH-006        PESADO        18701.4 4591.57                      4.21                   4.07                        -3.3                8.37
+        VEH-007       MEDIANO        14274.1 3026.90                      5.17                   4.72                        -8.7                7.43
+        VEH-008        LIGERO        10522.7 1303.17                      9.83                   8.07                       -17.9                5.32
+        VEH-009       MEDIANO        14162.5 2234.79                      6.20                   6.34                         2.3                6.52
+        VEH-010        LIGERO         9868.2 1356.08                      8.76                   7.28                       -16.9                6.04
+        VEH-011        PESADO        18004.9 4091.17                      4.94                   4.40                       -10.9                7.06
+        VEH-012        LIGERO         9171.0 1064.57                      9.93                   8.61                       -13.3                4.62
+        VEH-013       MEDIANO        13021.0 2089.50                      6.34                   6.23                        -1.7                7.88
+        VEH-014        PESADO        18334.2 5874.12                      3.97                   3.12                       -21.4                9.33
+        VEH-015        LIGERO         7703.1  876.08                      9.62                   8.79                        -8.6                7.81
+        VEH-016       MEDIANO        12683.8 2433.05                      5.31                   5.21                        -1.9                7.60
+        VEH-017        LIGERO         7677.2  809.54                      9.09                   9.48                         4.3                6.41
+        VEH-018        PESADO        16181.7 4349.09                      3.62                   3.72                         2.8                9.67
+        VEH-019        PESADO        15405.5 5169.78                      3.56                   2.98                       -16.3                9.93
+        VEH-020        LIGERO         7361.9  727.23                     10.62                  10.12                        -4.7                7.42
+
+  Mayor desviación vs nominal (candidatos a revisión):
+      VEH-014  -21.4%  (3.12 vs 3.97 km/l)
+      VEH-008  -17.9%  (8.07 vs 9.83 km/l)
+      VEH-010  -16.9%  (7.28 vs 8.76 km/l)
+
+==============================================================================
+  2 · MÉTRICAS POR OPERADOR  (porcentaje_entregas_a_tiempo, §11.3)
+==============================================================================
+codigo_operador  entregas_medibles  viajes  porcentaje_entregas_a_tiempo  retraso_medio_min
+        OPE-001                657     132                          69.9                8.9
+        OPE-002                539     112                          75.9                7.0
+        OPE-003                610     126                          70.8               10.3
+        OPE-004                581     123                          70.7                8.7
+        OPE-005                588     120                          73.6                8.5
+        OPE-006                606     124                          71.8                7.6
+        OPE-007                604     120                          69.0                9.7
+        OPE-008                586     119                          74.1                8.4
+        OPE-009                593     122                          70.7                7.5
+        OPE-010                605     122                          71.4                9.5
+        OPE-011                678     139                          72.1                9.5
+        OPE-012                601     124                          72.4               10.6
+        OPE-013                526     111                          72.8                9.6
+        OPE-014                606     124                          72.6                8.3
+        OPE-015                631     125                          70.5                8.7
+        OPE-016                567     117                          72.7                8.2
+        OPE-017                606     124                          71.3                9.1
+        OPE-018                616     129                          73.9                7.2
+        OPE-019                592     122                          70.8                8.8
+        OPE-020                550     113                          74.0                7.4
+        OPE-021                606     125                          71.9                8.7
+        OPE-022                627     126                          76.4                7.3
+        OPE-023                593     116                          73.2                9.5
+        OPE-024                519     109                          69.7                8.4
+
+==============================================================================
+  3 · DATASET DE RUTAS  (insumo del clustering)
+==============================================================================
+codigo_ruta     zona  numero_paradas  distancia_total_km  entregas  retraso_medio_min  pct_entregas_retrasadas  incidentes_por_viaje
+    RUT-001    NORTE               6                71.1       852               6.99                     20.3                  0.15
+    RUT-002    NORTE               4                70.5       562              12.79                     40.7                  0.15
+    RUT-003    NORTE               4                49.2       583               5.67                     16.0                  0.12
+    RUT-004    NORTE               6                98.7       878              13.96                     44.0                  0.18
+    RUT-005    NORTE               5                82.3       720               7.34                     21.7                  0.13
+    RUT-006      SUR               6                85.6       847               9.29                     31.4                  0.16
+    RUT-007      SUR               4                54.7       565               9.61                     26.2                  0.12
+    RUT-008      SUR               6                82.0       891              12.53                     39.7                  0.12
+    RUT-009      SUR               4                58.4       564               7.68                     17.2                  0.11
+    RUT-010      SUR               5                42.8       696              10.33                     24.7                  0.08
+    RUT-011  ORIENTE               4                64.6       565               7.61                     28.5                  0.10
+    RUT-012  ORIENTE               5                39.8       717               0.84                     12.1                  0.10
+    RUT-013  ORIENTE               5                82.3       718               9.70                     32.5                  0.13
+    RUT-014  ORIENTE               3                41.2       438               3.81                     11.9                  0.15
+    RUT-015  ORIENTE               8               100.7      1127               5.25                     28.8                  0.12
+    RUT-016 PONIENTE               6                65.0       877               8.03                     15.5                  0.08
+    RUT-017 PONIENTE               4                78.7       568               9.99                     28.9                  0.14
+    RUT-018 PONIENTE               4                77.9       559               7.70                     25.0                  0.10
+    RUT-019 PONIENTE               6               105.1       838               9.98                     34.5                  0.05
+    RUT-020 PONIENTE               5                89.0       722              12.07                     43.9                  0.11
+
+--- RESUMEN POR ZONA --------------------------------------------------------
+          rutas  retraso_medio  pct_retrasadas
+zona                                          
+NORTE         5            9.4            28.5
+ORIENTE       5            5.4            22.8
+PONIENTE      5            9.6            29.6
+SUR           5            9.9            27.8
+
+==============================================================================
+  4 · VERIFICACIONES AUTOMÁTICAS
+==============================================================================
+  [OK]    Un registro por vehículo de la flotilla       20 filas
+  [OK]    rendimiento_real_km_l calculado en todos      20 de 20
+  [OK]    Rendimiento real en rango plausible (2–20 km/l)2.98–10.12
+  [OK]    Real por debajo del nominal en promedio       desviación media -6.9%
+  [OK]    Un registro por operador                      24 filas
+  [OK]    porcentaje_entregas_a_tiempo en 0–100         69.0–76.4
+  [OK]    Un registro por ruta                          20 filas
+  [OK]    Toda ruta tiene perfil operativo              0 rutas sin entregas
+------------------------------------------------------------------------------
+  8/8 verificaciones correctas
+
+==============================================================================
+  ARCHIVOS GENERADOS
+==============================================================================
+  data\processed\metricas_vehiculos.csv        3.1 KB
+  data\processed\metricas_operadores.csv       2.2 KB
+  data\processed\dataset_rutas.csv             2.3 KB
+  data\outputs\reporte_enriquecimiento.txt
+
+==============================================================================
+  PA-6 TERMINADA. Siguiente actividad: carga del data warehouse.
+==============================================================================

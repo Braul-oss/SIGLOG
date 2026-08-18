@@ -1,0 +1,69 @@
+
+==============================================================================
+  SIG-LOG · TRANSFORMACIÓN (PA-6) — EVIDENCIA DE LA UNIDAD II
+==============================================================================
+  Los datos analizados son SIMULADOS (decisión C-02).
+
+  Extrayendo y transformando...
+
+==============================================================================
+  1 · DATASET ANALÍTICO DE ENTREGAS
+==============================================================================
+  Filas ........... 14,779 (de ellas, 14,287 calidad OK para ML)
+  Columnas ........ 33 (6 id · 20 features · 3 objetivo · 4 control)
+
+==============================================================================
+  2 · VARIABLES TEMPORALES DERIVADAS  (evidencia U-II)
+==============================================================================
+
+--- RETRASO MEDIO POR FRANJA HORARIA (filas OK) -----------------------------
+      MADRUGADA             713      1.5 min
+      PICO_MATUTINO       6,294     11.1 min
+      VALLE               7,280      7.2 min
+  → las franjas pico deben destacar: son el mecanismo generador
+    del retraso (Anexo B). Si no destacaran, la derivada estaría mal.
+
+--- RETRASO MEDIO POR DÍA (filas OK) ----------------------------------------
+      LUNES          14.8 min
+      MARTES          6.3 min
+      MIERCOLES       5.7 min
+      JUEVES          8.1 min
+      VIERNES        18.3 min
+      SABADO         -2.4 min
+
+==============================================================================
+  3 · VARIABLES TRAÍDAS DE LOS CATÁLOGOS
+==============================================================================
+
+--- CORRELACIÓN CON `retraso_min` (la señal que PA-4 anticipó) --------------
+n_incidentes_acumulados       0.513
+incidentes_viaje              0.410
+retraso_salida_min            0.295
+orden_parada                 -0.138
+antiguedad_vehiculo_anios     0.072
+experiencia_operador_meses   -0.011
+
+==============================================================================
+  4 · VERIFICACIONES AUTOMÁTICAS
+==============================================================================
+  [OK]    Sin filas perdidas en los joins           14,779 de 14,779 tras la limpieza
+  [OK]    Features sin nulos en filas OK            0 filas OK con features nulas
+  [OK]    Objetivos sin nulos en filas OK           0 filas OK con objetivo nulo
+  [OK]    Franja horaria dentro del catálogo        ['MADRUGADA', 'PICO_MATUTINO', 'VALLE']
+  [OK]    dia_semana en 0..6                        rango 0–5
+  [OK]    Antigüedad del vehículo no negativa       mín 2
+  [OK]    Experiencia del operador no negativa      mín 1.3
+------------------------------------------------------------------------------
+  7/7 verificaciones correctas
+
+==============================================================================
+  ARCHIVOS GENERADOS
+==============================================================================
+  data\processed\dataset_entregas.csv         4191 KB
+  data\outputs\reporte_transformacion.txt
+
+  Leerlo con etl.transformacion.cargar_dataset_entregas().
+
+==============================================================================
+  TRANSFORMACIÓN TERMINADA. Sigue: python -m etl.enriquecimiento
+==============================================================================
