@@ -82,8 +82,10 @@ def main() -> int:
         df = transformacion.aplanar(limpio)
         df = transformacion.derivar_temporales(df)
         df = transformacion.unir_catalogos(df, bd=bd)
+        df = transformacion.derivar_metricas_dw(df, bd=bd)
         columnas = (transformacion.COLUMNAS_ID + transformacion.COLUMNAS_FEATURES
-                    + transformacion.COLUMNAS_OBJETIVO + transformacion.COLUMNAS_CONTROL)
+                    + transformacion.COLUMNAS_OBJETIVO + transformacion.COLUMNAS_CONTROL
+                    + transformacion.COLUMNAS_METRICAS_DW)
         dataset = df[columnas].copy()
         paso("TRANSFORMACIÓN", f"dataset {dataset.shape[0]:,} × {dataset.shape[1]}", t)
 

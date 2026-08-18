@@ -98,6 +98,19 @@ COLUMNAS_FEATURES = [
 COLUMNAS_OBJETIVO = ["tiempo_real_min", "retraso_min", "es_retraso"]
 COLUMNAS_CONTROL = ["estatus", "causa_retraso", "calidad_dato", "es_outlier_iqr"]
 
+# Métricas del modelo estrella (§14.2) y campos derivados de §11.12 que no
+# alimentan a los modelos pero sí a los KPIs y los reportes del dashboard.
+COLUMNAS_METRICAS_DW = [
+    "folio_viaje",                   # degenerada
+    "numero_entregas",               # aditiva (=1)
+    "entrega_completada",            # bandera
+    "minutos_perdidos_incidentes",   # semiaditiva
+    "costo_combustible_asignado",    # aditiva (imputada, D-T2)
+    "porcentaje_desviacion",         # no aditiva
+    "rendimiento_km_l",              # no aditiva
+    "dias_desde_mantenimiento",      # derivada §11.12
+]
+
 
 # ==========================================================================
 # 1 · APLANADO DE LO SEMIESTRUCTURADO
@@ -114,6 +127,9 @@ def aplanar(df: pd.DataFrame) -> pd.DataFrame:
     copia = df.copy()
     copia["n_incidentes_acumulados"] = copia["incidentes_ids"].map(
         lambda v: len(v) if isinstance(v, list) else 0)
+    # Se conserva la lista original con nombre interno: la necesita
+    # `derivar_metricas_dw` para sumar los minutos perdidos por incidente.
+    copia["_incidentes_ids"] = copia["incidentes_ids"]
     return copia.drop(columns=["historial_estatus", "observaciones",
                                "incidentes_ids", "hora_estimada_recalculada"],
                       errors="ignore")
@@ -191,6 +207,117 @@ def unir_catalogos(df: pd.DataFrame, bd=None) -> pd.DataFrame:
 
 
 # ==========================================================================
+# 4 · MÉTRICAS DEL MODELO ESTRELLA  (§14.2 y §11.12 del documento técnico)
+# ==========================================================================
+# Decisión D-T2 — asignación del costo de combustible a la entrega.
+# El documento pide `costo_combustible_asignado` en la tabla de hechos, pero
+# el combustible se carga por vehículo (1,379 cargas para 2,956 viajes): no
+# todos los viajes tienen una carga asociada. Repartir el costo de la carga
+# entre las entregas de "su" viaje dejaría sin costo a más de la mitad.
+# Se asigna con el costo por kilómetro del vehículo en el periodo,
+# multiplicado por la distancia de la entrega. Es una imputación explícita,
+# no un dato observado, y por eso el nombre conserva la palabra "asignado".
+
+
+def derivar_metricas_dw(df: pd.DataFrame, bd=None) -> pd.DataFrame:
+    """
+    Agrega las métricas de la tabla de hechos que el modelo estrella exige
+    y que no salen directamente de `entregas`.
+
+    Cubre: folio_viaje, numero_entregas, entrega_completada,
+    minutos_perdidos_incidentes, porcentaje_desviacion, rendimiento_km_l,
+    costo_combustible_asignado y dias_desde_mantenimiento.
+    """
+    copia = df.copy()
+
+    # --- Degenerada: folio del viaje ---------------------------------------
+    viajes = extraccion.extraer("viajes", bd=bd)[["_id", "folio_viaje"]]
+    viajes = viajes.rename(columns={"_id": "viaje_id"})
+    copia = copia.merge(viajes, on="viaje_id", how="left", validate="m:1")
+
+    # --- Aditivas y banderas -----------------------------------------------
+    copia["numero_entregas"] = 1
+    copia["entrega_completada"] = (copia["estatus"] == "ENTREGADA").astype(int)
+
+    # --- Minutos perdidos por incidentes en esta entrega -------------------
+    # Se suman las duraciones de los incidentes que ya afectaban al viaje
+    # cuando se llegó a esta parada (los mismos que cuenta
+    # `n_incidentes_acumulados`).
+    incidentes = extraccion.extraer("incidentes", bd=bd)
+    duraciones = dict(zip(incidentes["_id"], incidentes["duracion_min"]))
+    copia["minutos_perdidos_incidentes"] = copia["_incidentes_ids"].map(
+        lambda ids: float(sum(duraciones.get(i, 0) for i in ids))
+        if isinstance(ids, list) else 0.0)
+
+    # --- No aditiva: desviación del tiempo real frente al estimado ---------
+    copia["porcentaje_desviacion"] = (
+        100 * (copia["tiempo_real_min"] - copia["tiempo_estimado_min"])
+        / copia["tiempo_estimado_min"]).round(1)
+
+    # --- No aditiva: rendimiento real del vehículo -------------------------
+    combustible = extraccion.extraer("combustible", bd=bd)
+    rendimiento = (combustible.groupby("vehiculo_id")
+                   .apply(lambda g: g["km_recorridos_desde_carga_anterior"].sum()
+                          / g["litros"].sum(), include_groups=False)
+                   .round(2).rename("rendimiento_km_l"))
+    copia = copia.merge(rendimiento, on="vehiculo_id", how="left")
+
+    # --- Costo de combustible asignado (D-T2) ------------------------------
+    costo_por_km = (combustible.groupby("vehiculo_id")
+                    .apply(lambda g: g["costo_total"].sum()
+                           / g["km_recorridos_desde_carga_anterior"].sum(),
+                           include_groups=False)
+                    .rename("_costo_km"))
+    copia = copia.merge(costo_por_km, on="vehiculo_id", how="left")
+    copia["costo_combustible_asignado"] = (
+        copia["_costo_km"] * copia["distancia_km"]).round(2)
+
+    # --- Días desde el último mantenimiento (§11.12) -----------------------
+    copia = _dias_desde_mantenimiento(copia, bd=bd)
+
+    return copia.drop(columns=["_costo_km", "_incidentes_ids"], errors="ignore")
+
+
+def _dias_desde_mantenimiento(df: pd.DataFrame, bd=None) -> pd.DataFrame:
+    """
+    Días transcurridos entre el último mantenimiento REALIZADO del vehículo
+    y la fecha de la entrega.
+
+    Se resuelve con `merge_asof`, que para cada entrega toma el
+    mantenimiento más reciente ANTERIOR a esa fecha. Usar el último
+    mantenimiento sin más metería información del futuro en el dataset,
+    justo lo que la prevención de fuga (§15.3) prohíbe.
+    """
+    mantenimientos = extraccion.extraer("mantenimientos", bd=bd)
+    realizados = (mantenimientos[mantenimientos["estatus"] == "REALIZADO"]
+                  [["vehiculo_id", "fecha_realizada"]]
+                  .dropna()
+                  .copy())
+    # merge_asof exige el mismo tipo exacto en ambas claves: las fechas de
+    # Mongo llegan con offset fijo y las del dataset ya normalizadas a UTC.
+    realizados["fecha_realizada"] = pd.to_datetime(
+        realizados["fecha_realizada"], utc=True)
+    realizados = realizados.sort_values("fecha_realizada")
+
+    izquierda = df[["vehiculo_id", "fecha"]].copy()
+    izquierda["fecha"] = pd.to_datetime(izquierda["fecha"], utc=True)
+    izquierda["_orden"] = range(len(izquierda))
+    izquierda = izquierda.sort_values("fecha")
+
+    unido = pd.merge_asof(
+        izquierda, realizados,
+        left_on="fecha", right_on="fecha_realizada",
+        by="vehiculo_id", direction="backward",
+    ).sort_values("_orden")
+
+    dias = (pd.to_datetime(unido["fecha"], utc=True)
+            - pd.to_datetime(unido["fecha_realizada"], utc=True)).dt.days
+    copia = df.copy()
+    copia["dias_desde_mantenimiento"] = dias.to_numpy()
+    return copia
+
+
+# ==========================================================================
 # PIPELINE COMPLETO
 # ==========================================================================
 def transformar(bd=None) -> tuple[pd.DataFrame, dict[str, Any]]:
@@ -201,8 +328,10 @@ def transformar(bd=None) -> tuple[pd.DataFrame, dict[str, Any]]:
     df = aplanar(limpio)
     df = derivar_temporales(df)
     df = unir_catalogos(df, bd=bd)
+    df = derivar_metricas_dw(df, bd=bd)
 
-    columnas = COLUMNAS_ID + COLUMNAS_FEATURES + COLUMNAS_OBJETIVO + COLUMNAS_CONTROL
+    columnas = (COLUMNAS_ID + COLUMNAS_FEATURES + COLUMNAS_OBJETIVO
+                + COLUMNAS_CONTROL + COLUMNAS_METRICAS_DW)
     dataset = df[columnas].copy()
 
     bitacora = {
@@ -219,7 +348,8 @@ def cargar_dataset_entregas(ruta: Path = ARCHIVO_DATASET) -> pd.DataFrame:
     df = pd.read_csv(ruta, dtype={"calidad_dato": "string"})
     df["fecha"] = pd.to_datetime(df["fecha"], format="ISO8601", utc=True)
     for columna in ("es_retraso", "es_outlier_iqr", "es_fin_semana",
-                    "dia_semana", "mes"):
+                    "dia_semana", "mes", "numero_entregas",
+                    "entrega_completada", "dias_desde_mantenimiento"):
         df[columna] = df[columna].astype("Int64")
     return df
 

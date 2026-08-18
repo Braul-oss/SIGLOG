@@ -71,9 +71,11 @@ def _dataset_entregas(bd=None) -> pd.DataFrame:
 # 1 · MÉTRICAS POR VEHÍCULO  (rendimiento_real_km_l, §11.2)
 # ==========================================================================
 def metricas_vehiculos(bd=None) -> pd.DataFrame:
+    # marca, modelo y capacidad_tanque_litros los pide §14.2 para dim_vehiculo
     vehiculos = extraccion.extraer("vehiculos", bd=bd)[
-        ["_id", "codigo_vehiculo", "placa", "tipo_vehiculo", "anio",
-         "rendimiento_nominal_km_l", "estado_operativo"]
+        ["_id", "codigo_vehiculo", "placa", "marca", "modelo", "tipo_vehiculo",
+         "anio", "capacidad_tanque_litros", "rendimiento_nominal_km_l",
+         "estado_operativo", "fecha_ultimo_mantenimiento"]
     ].rename(columns={"_id": "vehiculo_id"})
 
     viajes = extraccion.extraer("viajes", bd=bd)
@@ -98,6 +100,7 @@ def metricas_vehiculos(bd=None) -> pd.DataFrame:
           .join([km, combustible, mtto]).reset_index())
 
     # Indicadores derivados (el enriquecimiento propiamente dicho)
+    df["antiguedad_anios"] = (pd.Timestamp.now(tz="UTC").year - df["anio"]).clip(lower=0)
     df["rendimiento_real_km_l"] = (df["km_recorridos"] / df["litros"]).round(2)
     df["desviacion_rendimiento_pct"] = (
         100 * (df["rendimiento_real_km_l"] - df["rendimiento_nominal_km_l"])

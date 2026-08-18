@@ -136,15 +136,35 @@ def construir_dim_tiempo(hecho: pd.DataFrame) -> pd.DataFrame:
     dim["dia_semana"] = serie.dt.dayofweek
     dim["nombre_dia"] = dim["dia_semana"].map(lambda d: NOMBRES_DIA[d])
     dim["es_fin_semana"] = (dim["dia_semana"] >= 5).astype(int)
+    dim["trimestre"] = serie.dt.quarter
     dim["semana_anio"] = serie.dt.isocalendar().week.astype(int)
     return dim
+
+
+def _municipio_principal(direcciones: Any) -> str | None:
+    """Municipio de la dirección marcada como principal (o la primera)."""
+    if not isinstance(direcciones, list) or not direcciones:
+        return None
+    principal = next((d for d in direcciones if d.get("principal")), direcciones[0])
+    return principal.get("municipio")
 
 
 def construir_dim_cliente(hecho: pd.DataFrame, bd=None) -> pd.DataFrame:
     from etl import extraccion
     clientes = extraccion.extraer("clientes", bd=bd)[
-        ["_id", "codigo_cliente", "nombre", "tipo_cliente"]]
+        ["_id", "codigo_cliente", "nombre", "tipo_cliente", "direcciones"]]
     clientes["_id"] = clientes["_id"].astype(str)
+
+    # §14.2 pide `municipio` y `zona` en la dimensión. El municipio sale de
+    # la dirección marcada como principal; la zona no vive en el cliente,
+    # sino en las rutas que lo atienden, así que se toma la más frecuente.
+    clientes["municipio"] = clientes["direcciones"].map(_municipio_principal)
+    zonas = (hecho.groupby("cliente_id")["zona"]
+             .agg(lambda s: s.mode().iat[0] if not s.mode().empty else None)
+             .rename("zona"))
+    clientes = clientes.drop(columns=["direcciones"]).merge(
+        zonas.reset_index().rename(columns={"cliente_id": "_id"}),
+        on="_id", how="left")
 
     ok = hecho[hecho["calidad_dato"] == "OK"]
     perfil = (ok.assign(retrasada=(ok["es_retraso"] == 1).astype(int))
