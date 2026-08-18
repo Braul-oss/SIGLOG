@@ -161,6 +161,87 @@ def dividir(X: pd.DataFrame, y: pd.Series, estratificar: bool = False):
 
 
 # ==========================================================================
+# 1b · DATASET DE RUTAS  (aprendizaje no supervisado)
+# ==========================================================================
+# Perfil operativo de la ruta: mezcla su DISEÑO (longitud, paradas,
+# velocidad) con su COMPORTAMIENTO real (retraso, incidentes). Agrupar por
+# ambas cosas distingue una ruta larga que funciona bien de una corta que
+# se complica.
+VARIABLES_RUTA_CANDIDATAS: tuple[str, ...] = (
+    "numero_paradas", "distancia_total_km", "tiempo_estimado_total_min",
+    "velocidad_efectiva_kmh", "entregas", "retraso_medio_min",
+    "pct_entregas_retrasadas", "incidentes_por_viaje",
+    "retraso_salida_medio_min",
+)
+
+# Decisión D-K1 — eliminación de variables redundantes.
+# El análisis de correlación encontró tres pares que miden el mismo
+# concepto: numero_paradas ~ entregas (r=1.00), distancia_total_km ~
+# tiempo_estimado_total_min (r=0.88) y retraso_medio_min ~
+# pct_entregas_retrasadas (r=0.86). Conservarlos haría que el "tamaño" de
+# la ruta pese varias veces más que los incidentes al medir distancias.
+VARIABLES_RUTA: tuple[str, ...] = (
+    "numero_paradas",            # tamaño de la ruta
+    "distancia_total_km",        # extensión geográfica
+    "velocidad_efectiva_kmh",    # fluidez de diseño
+    "retraso_medio_min",         # comportamiento: puntualidad
+    "incidentes_por_viaje",      # comportamiento: eventos externos
+    "retraso_salida_medio_min",  # comportamiento: disciplina de salida
+)
+
+UMBRAL_REDUNDANCIA: float = 0.80
+
+
+def cargar_rutas(bd=None) -> pd.DataFrame:
+    """Lee `dim_ruta` del DW (perfil operativo construido en PA-6)."""
+    base = bd if bd is not None else obtener_bd()
+    documentos = list(base["dim_ruta"].find({}))
+    if not documentos:
+        raise RuntimeError(
+            "`dim_ruta` está vacía. Ejecuta antes: python -m etl.run_etl")
+    return pd.DataFrame(documentos)
+
+
+def analizar_redundancia(df: pd.DataFrame) -> list[tuple[str, str, float]]:
+    """
+    Pares de variables candidatas que miden lo mismo (|r| ≥ umbral).
+
+    Es la evidencia que sostiene D-K1 y se recalcula en cada corrida: si
+    el perfil de las rutas cambiara, el reporte lo haría notar en lugar
+    de arrastrar una decisión vieja.
+    """
+    correlacion = df[list(VARIABLES_RUTA_CANDIDATAS)].corr()
+    pares = []
+    for i, primera in enumerate(VARIABLES_RUTA_CANDIDATAS):
+        for segunda in VARIABLES_RUTA_CANDIDATAS[i + 1:]:
+            r = float(correlacion.loc[primera, segunda])
+            if abs(r) >= UMBRAL_REDUNDANCIA:
+                pares.append((primera, segunda, round(r, 2)))
+    return pares
+
+
+def escalar_rutas(df: pd.DataFrame) -> tuple[np.ndarray, StandardScaler]:
+    """
+    Estandariza el perfil antes de agrupar.
+
+    Indispensable: K-Means agrupa por distancia euclidiana y, sin
+    escalar, `distancia_total_km` (decenas) aplastaría a
+    `incidentes_por_viaje` (décimas); los grupos reflejarían solo la
+    longitud de la ruta.
+    """
+    escalador = StandardScaler()
+    return escalador.fit_transform(df[list(VARIABLES_RUTA)]), escalador
+
+
+def proyectar_pca(X: np.ndarray, n_componentes: int = 2):
+    """Proyección a componentes principales, con la semilla del proyecto."""
+    from sklearn.decomposition import PCA
+
+    modelo = PCA(n_components=n_componentes, random_state=SEMILLA)
+    return modelo.fit_transform(X), modelo
+
+
+# ==========================================================================
 # 2 · PREPROCESAMIENTO
 # ==========================================================================
 def crear_preprocesador(escenario: str) -> ColumnTransformer:

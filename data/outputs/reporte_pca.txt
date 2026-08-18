@@ -1,0 +1,82 @@
+
+==============================================================================
+  SIG-LOG · COMPONENTES PRINCIPALES DE LAS RUTAS (PA-9)
+==============================================================================
+  Los datos son SIMULADOS (decisión C-02).
+
+==============================================================================
+  1 · CUÁNTA INFORMACIÓN CONSERVA CADA COMPONENTE
+==============================================================================
+componente  varianza_pct  acumulada_pct
+       CP1          33.1           33.1
+       CP2          22.9           56.0
+       CP3          17.6           73.6
+       CP4          12.9           86.5
+       CP5          10.2           96.7
+       CP6           3.3          100.0
+
+  Los 2 componentes usados para agrupar conservan el 56.0% de la varianza.
+  Basta para separar los grupos y para dibujarlos, pero la
+  gráfica es una sombra del perfil completo: dos rutas que
+  aparecen cerca pueden diferir en lo que el resto de los
+  componentes recoge.
+
+==============================================================================
+  2 · QUÉ MIDE CADA COMPONENTE  (cargas)
+==============================================================================
+                            CP1    CP2
+numero_paradas            0.513 -0.312
+distancia_total_km        0.657 -0.141
+velocidad_efectiva_kmh   -0.005  0.682
+retraso_medio_min         0.431  0.187
+incidentes_por_viaje      0.149  0.539
+retraso_salida_medio_min -0.313 -0.303
+
+  CP1: crece con distancia_total_km, numero_paradas, retraso_medio_min; decrece con retraso_salida_medio_min
+  CP2: crece con velocidad_efectiva_kmh, incidentes_por_viaje; decrece con retraso_salida_medio_min, numero_paradas
+
+  Lectura: el primer componente ordena las rutas por CARGA DE
+  TRABAJO —distancia, paradas y el retraso que esa extensión
+  arrastra—. El segundo separa por CONDICIONES DEL RECORRIDO:
+  rutas fluidas pero expuestas a incidentes frente a rutas
+  lentas con salidas tardías.
+
+  Nota: `retraso_medio_min` pesa más en el primer componente
+  que en el segundo, es decir, el retraso viene asociado sobre
+  todo al tamaño de la ruta. Coincide con lo que encontró el
+  agrupamiento: el grupo crítico es el de recorridos largos.
+
+==============================================================================
+  3 · GRUPOS EN EL PLANO DE COMPONENTES
+==============================================================================
+                                       rutas  cp1_medio  cp2_medio  silueta_media
+nombre_grupo                                                                     
+RUTAS CORTAS ESTABLES (mayor retraso)     10     -0.543      0.666          0.230
+RUTAS CORTAS ESTABLES (menor retraso)      3     -1.801     -1.524          0.658
+RUTAS LARGAS CRÍTICAS                      4      1.633      0.620          0.526
+RUTAS LARGAS ESTABLES                      3      1.435     -1.523          0.564
+
+  Silueta global del agrupamiento: 0.403
+
+==============================================================================
+  4 · VERIFICACIONES AUTOMÁTICAS
+==============================================================================
+  [OK]    La varianza explicada suma 100%             100.0%
+  [OK]    Los 2 componentes conservan más de la mitad 56.0%
+  [OK]    Cada componente tiene variables dominantes  carga máxima CP1 0.66 · CP2 0.68
+  [OK]    Coordenadas guardadas reproducibles         coinciden con el PCA recalculado
+  [OK]    Todas las rutas tienen grupo asignado       20 rutas
+------------------------------------------------------------------------------
+  5/5 verificaciones correctas
+
+==============================================================================
+  5 · ARCHIVOS GENERADOS
+==============================================================================
+  data\outputs\pca_clusters_rutas.png              129 KB
+  data\outputs\reporte_pca.txt
+
+==============================================================================
+  PA-9 TERMINADA.
+  El agrupamiento está en `clusters_rutas`, listo para el
+  dashboard y los reportes.
+==============================================================================

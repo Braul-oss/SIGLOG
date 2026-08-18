@@ -1,0 +1,126 @@
+
+==============================================================================
+  SIG-LOG · AGRUPAMIENTO DE RUTAS CON K-MEANS (PA-9)
+==============================================================================
+  Los datos son SIMULADOS (decisión C-02).
+
+==============================================================================
+  1 · CONFIGURACIÓN DEL AGRUPAMIENTO
+==============================================================================
+  k = 4, decidido por seleccion_k.py
+  Se descartaron k=[5, 6, 7, 8] por dejar grupos con menos de 2 rutas. Entre las válidas, k=4 maximiza la silueta (0.403). El codo sugiere k=5; se prefiere la silueta, que tiene un máximo con significado.
+
+  Algoritmo ......... KMeans (semilla 42, 10 inicios)
+  Espacio ........... 2 componentes principales
+  Variables ......... 6 del perfil de ruta
+  Silueta global .... 0.403
+  Inercia ........... 17.76
+
+==============================================================================
+  2 · PERFIL DE CADA GRUPO
+==============================================================================
+       rutas  numero_paradas  distancia_total_km  velocidad_efectiva_kmh  retraso_medio_min  incidentes_por_viaje  retraso_salida_medio_min  silueta_media
+grupo                                                                                                                                                     
+0          4            5.75               87.15                   25.75              10.78                  0.15                      5.93          0.526
+1          3            4.67               49.07                   20.73               6.26                  0.09                      6.91          0.658
+2         10            4.40               64.90                   28.49               8.20                  0.12                      6.37          0.230
+3          3            6.33               98.27                   22.37               9.10                  0.09                      6.37          0.564
+
+  Valores en unidades originales (el agrupamiento se hizo sobre
+  variables estandarizadas y proyectadas a componentes principales).
+
+==============================================================================
+  3 · LECTURA OPERATIVA DE CADA GRUPO  (D-K4)
+==============================================================================
+
+  GRUPO 0 — RUTAS LARGAS CRÍTICAS  (4 rutas)
+      Recorridos extensos que además acumulan retraso e incidentes por encima de la mediana.
+      Retraso medio 10.8 min · 87 km · 5.8 paradas · 0.15 incidentes/viaje
+      RECOMENDACIÓN: Prioridad de revisión: dividir la ruta o adelantar la hora de salida. Es donde una mejora rinde más, porque afecta a muchas entregas.
+
+  GRUPO 1 — RUTAS CORTAS ESTABLES (menor retraso)  (3 rutas)
+      Recorridos breves y puntuales: el núcleo sano de la operación.
+      Retraso medio 6.3 min · 49 km · 4.7 paradas · 0.09 incidentes/viaje
+      RECOMENDACIÓN: Sin intervención. Son candidatas a absorber paradas de las rutas críticas si hiciera falta rebalancear.
+
+  GRUPO 2 — RUTAS CORTAS ESTABLES (mayor retraso)  (10 rutas)
+      Recorridos breves y puntuales: el núcleo sano de la operación.
+      Retraso medio 8.2 min · 65 km · 4.4 paradas · 0.12 incidentes/viaje
+      RECOMENDACIÓN: Sin intervención. Son candidatas a absorber paradas de las rutas críticas si hiciera falta rebalancear.
+
+  GRUPO 3 — RUTAS LARGAS ESTABLES  (3 rutas)
+      Recorridos extensos que cumplen: la longitud está bien absorbida por la programación.
+      Retraso medio 9.1 min · 98 km · 6.3 paradas · 0.09 incidentes/viaje
+      RECOMENDACIÓN: Mantener la programación actual y usarlas como referencia de buena práctica para rediseñar las críticas.
+
+==============================================================================
+  4 · RUTAS POR GRUPO
+==============================================================================
+
+  GRUPO 0 — RUTAS LARGAS CRÍTICAS
+      RUTA      ZONA        RETRASO      KM  PARADAS  SILUETA
+      RUT-004   NORTE          14.0    98.7        6    0.532
+      RUT-008   SUR            12.5    82.0        6    0.663
+      RUT-006   SUR             9.3    85.6        6    0.550
+      RUT-005   NORTE           7.3    82.3        5    0.358
+
+  GRUPO 1 — RUTAS CORTAS ESTABLES (menor retraso)
+      RUTA      ZONA        RETRASO      KM  PARADAS  SILUETA
+      RUT-010   SUR            10.3    42.8        5    0.686
+      RUT-011   ORIENTE         7.6    64.6        4    0.675
+      RUT-012   ORIENTE         0.8    39.8        5    0.613
+
+  GRUPO 2 — RUTAS CORTAS ESTABLES (mayor retraso)
+      RUTA      ZONA        RETRASO      KM  PARADAS  SILUETA
+      RUT-002   NORTE          12.8    70.5        4    0.363
+      RUT-017   PONIENTE       10.0    78.7        4    0.383
+      RUT-013   ORIENTE         9.7    82.3        5    0.051
+      RUT-007   SUR             9.6    54.7        4    0.501
+      RUT-016   PONIENTE        8.0    65.0        6    0.220
+      RUT-018   PONIENTE        7.7    77.9        4    0.032
+      RUT-009   SUR             7.7    58.4        4    0.503
+      RUT-001   NORTE           7.0    71.1        6   -0.138
+      RUT-003   NORTE           5.7    49.2        4    0.143
+      RUT-014   ORIENTE         3.8    41.2        3    0.238
+
+  GRUPO 3 — RUTAS LARGAS ESTABLES
+      RUTA      ZONA        RETRASO      KM  PARADAS  SILUETA
+      RUT-020   PONIENTE       12.1    89.0        5    0.482
+      RUT-019   PONIENTE       10.0   105.1        6    0.600
+      RUT-015   ORIENTE         5.2   100.7        8    0.609
+
+--- DISTRIBUCIÓN POR ZONA ---------------------------------------------------
+nombre_grupo  RUTAS CORTAS ESTABLES (mayor retraso)  RUTAS CORTAS ESTABLES (menor retraso)  RUTAS LARGAS CRÍTICAS  RUTAS LARGAS ESTABLES
+zona                                                                                                                                    
+NORTE                                             3                                      0                      2                      0
+ORIENTE                                           2                                      2                      0                      1
+PONIENTE                                          3                                      0                      0                      2
+SUR                                               2                                      1                      2                      0
+
+  Si un grupo se concentrara en una sola zona, el problema sería
+  geográfico; si se reparte, es de diseño o programación de la ruta.
+
+==============================================================================
+  5 · VERIFICACIONES AUTOMÁTICAS
+==============================================================================
+  [OK]    Toda ruta quedó asignada a un grupo         20 rutas
+  [OK]    Ningún grupo con una sola ruta              tamaños [3, 3, 4, 10]
+  [OK]    Silueta global por encima del azar          0.403
+  [OK]    Rutas mal asignadas (silueta < 0) acotadas  1 de 20
+  [OK]    Cada grupo tiene nombre y recomendación propios4 nombres únicos
+  [OK]    Persistido en `clusters_rutas`              20 documentos
+------------------------------------------------------------------------------
+  6/6 verificaciones correctas
+
+==============================================================================
+  6 · ARCHIVOS GENERADOS
+==============================================================================
+  data\processed\clusters_rutas.csv                6.5 KB
+  data\outputs\reporte_kmeans.txt
+
+  Colección `clusters_rutas`: 20 documentos.
+
+==============================================================================
+  AGRUPAMIENTO TERMINADO.
+  Sigue: python -m ml.no_supervisado.pca_rutas
+==============================================================================
