@@ -18,7 +18,44 @@
   dim_operador            24         10
   dim_ruta                20         15
 
-  --dry-run activo: no se escribió nada en MongoDB.
+==============================================================================
+  2 · CARGA EN MONGODB ATLAS  (idempotente, D-C2)
+==============================================================================
+  hecho_entrega       14,779 documentos
+  dim_tiempo             155 documentos
+  dim_cliente            100 documentos
+  dim_vehiculo            20 documentos
+  dim_operador            24 documentos
+  dim_ruta                20 documentos
+
+  Índices de hecho_entrega (D-C3, declarados en database/indices.py):
+      [OK] ux_hecho_folio
+      [OK] ix_hecho_fecha
+      [OK] ix_hecho_ruta_fecha
+      [OK] ix_hecho_vehiculo
+      [OK] ix_hecho_operador
+      [OK] ix_hecho_cliente
+      [OK] ix_hecho_es_retraso
+      [OK] ix_hecho_calidad
+
+==============================================================================
+  3 · VERIFICACIONES AUTOMÁTICAS
+==============================================================================
+  [OK]    hecho_entrega: documentos cargados          14,779 de 14,779
+  [OK]    dim_tiempo: documentos cargados             155 de 155
+  [OK]    dim_cliente: documentos cargados            100 de 100
+  [OK]    dim_vehiculo: documentos cargados           20 de 20
+  [OK]    dim_operador: documentos cargados           24 de 24
+  [OK]    dim_ruta: documentos cargados               20 de 20
+  [OK]    hecho.fecha_id → dim_tiempo                 sin huérfanos
+  [OK]    hecho.cliente_id → dim_cliente              sin huérfanos
+  [OK]    hecho.vehiculo_id → dim_vehiculo            sin huérfanos
+  [OK]    hecho.operador_id → dim_operador            sin huérfanos
+  [OK]    hecho.ruta_id → dim_ruta                    sin huérfanos
+  [OK]    Documento de hecho con campos clave         verificado
+  [OK]    Todo el DW marcado origen_dato=SIMULADO     completo
+------------------------------------------------------------------------------
+  13/13 verificaciones correctas
 
 ==============================================================================
   PA-7 TERMINADA. El DW está listo para KPIs, gráficas y ML.

@@ -84,9 +84,10 @@ def a_documentos(df: pd.DataFrame) -> list[dict[str, Any]]:
     PyMongo no codifica escalares de NumPy ni pd.NA, así que todo valor
     se lleva a tipos nativos de Python y los faltantes quedan como None.
     """
+    comunes = _comunes()
     documentos = []
     for registro in df.to_dict("records"):
-        limpio: dict[str, Any] = {}
+        limpio: dict[str, Any] = dict(comunes)
         for clave, valor in registro.items():
             if valor is None or (isinstance(valor, float) and np.isnan(valor)) \
                     or valor is pd.NaT or valor is pd.NA:
@@ -218,9 +219,17 @@ def verificar(bd, hecho: pd.DataFrame,
     ejemplo = bd["hecho_entrega"].find_one({"calidad_dato": "OK"})
     campos_clave = {"folio_entrega", "fecha_id", "retraso_min", "es_retraso",
                     "franja_horaria", "origen_dato"}
+    faltantes = sorted(campos_clave - set(ejemplo)) if ejemplo else []
     resultados.append(("Documento de hecho con campos clave",
-                       ejemplo is not None and campos_clave <= set(ejemplo),
-                       "verificado" if ejemplo else "colección vacía"))
+                       ejemplo is not None and not faltantes,
+                       "verificado" if ejemplo and not faltantes
+                       else f"faltan: {faltantes}" if ejemplo else "colección vacía"))
+
+    # Regla académica: ningún documento puede confundirse con dato real.
+    sin_marca = sum(bd[c].count_documents({"origen_dato": {"$ne": "SIMULADO"}})
+                    for c in ("hecho_entrega", *DIMENSIONES))
+    resultados.append(("Todo el DW marcado origen_dato=SIMULADO", sin_marca == 0,
+                       "completo" if sin_marca == 0 else f"{sin_marca} sin marca"))
     return resultados
 
 
