@@ -1,0 +1,139 @@
+
+==============================================================================
+  SIG-LOG · CLASIFICACIÓN DEL RIESGO DE RETRASO (PA-8)
+==============================================================================
+  Los datos son SIMULADOS (decisión C-02).
+  Umbral de retraso (RNP-01): 15 minutos.
+
+  Dataset: 14,287 entregas de calidad OK · 3,978 con retraso (27.8%)
+
+==============================================================================
+  1 · ESCENARIO PLANEACION  (16 variables)
+==============================================================================
+  solo información disponible ANTES de que salga el vehículo
+  Entrenamiento 11,429 filas · Prueba 2,858 filas · semilla 42
+
+  MODELO                       EXACTITUD PRECISION    RECALL        F1   ROC_AUC
+------------------------------------------------------------------------------
+  Base (siempre a tiempo)          0.721     0.000     0.000     0.000     0.500
+  Regresión logística              0.619     0.396     0.707     0.508     0.710
+  Árbol de decisión                0.686     0.461     0.751     0.571     0.760
+  Random Forest                    0.732     0.514     0.666     0.580     0.779
+
+  Mejor por F1: Random Forest
+      Detecta el 66.6% de los retrasos reales; de cada 100 alertas, 51 son ciertas.
+      El modelo base alcanza 72.1% de exactitud sin detectar un solo retraso:
+      por eso el criterio es F1 y no exactitud.
+
+--- MATRIZ DE CONFUSIÓN DEL MEJOR MODELO (conjunto de prueba) ---------------
+                            Predicho: A TIEMPO   Predicho: RETRASO
+  Real: A TIEMPO                         1,561                 501
+  Real: RETRASO                            266                 530
+
+      Verdaderos positivos    530  retrasos detectados a tiempo
+      Falsos negativos        266  retrasos que el sistema NO avisó
+      Falsos positivos        501  alertas en entregas que sí llegaron bien
+      Verdaderos negativos  1,561  entregas correctamente descartadas
+
+--- VALIDACIÓN CRUZADA (5 particiones, F1) ----------------------------------
+      F1 medio 0.563 ± 0.007
+      Desviación baja = el desempeño no dependió de la partición.
+
+--- VARIABLES MÁS INFLUYENTES -----------------------------------------------
+      dia_semana                          0.238
+      experiencia_operador_meses          0.199
+      mes                                 0.103
+      rendimiento_nominal_km_l            0.059
+      es_fin_semana                       0.056
+      tiempo_estimado_min                 0.055
+      distancia_km                        0.052
+      orden_parada                        0.051
+      distancia_total_ruta_km             0.042
+      antiguedad_vehiculo_anios           0.025
+      velocidad_efectiva_kmh              0.022
+      franja_horaria_PICO_MATUTINO        0.020
+
+==============================================================================
+  2 · ESCENARIO EN_RUTA  (19 variables)
+==============================================================================
+  agrega lo ya ocurrido en el viaje (retraso de salida e incidentes)
+  Entrenamiento 11,429 filas · Prueba 2,858 filas · semilla 42
+
+  MODELO                       EXACTITUD PRECISION    RECALL        F1   ROC_AUC
+------------------------------------------------------------------------------
+  Base (siempre a tiempo)          0.721     0.000     0.000     0.000     0.500
+  Regresión logística              0.773     0.570     0.742     0.645     0.859
+  Árbol de decisión                0.787     0.587     0.788     0.673     0.882
+  Random Forest                    0.840     0.672     0.833     0.744     0.922
+
+  Mejor por F1: Random Forest
+      Detecta el 83.3% de los retrasos reales; de cada 100 alertas, 67 son ciertas.
+      El modelo base alcanza 72.1% de exactitud sin detectar un solo retraso:
+      por eso el criterio es F1 y no exactitud.
+
+--- MATRIZ DE CONFUSIÓN DEL MEJOR MODELO (conjunto de prueba) ---------------
+                            Predicho: A TIEMPO   Predicho: RETRASO
+  Real: A TIEMPO                         1,738                 324
+  Real: RETRASO                            133                 663
+
+      Verdaderos positivos    663  retrasos detectados a tiempo
+      Falsos negativos        133  retrasos que el sistema NO avisó
+      Falsos positivos        324  alertas en entregas que sí llegaron bien
+      Verdaderos negativos  1,738  entregas correctamente descartadas
+
+--- VALIDACIÓN CRUZADA (5 particiones, F1) ----------------------------------
+      F1 medio 0.725 ± 0.014
+      Desviación baja = el desempeño no dependió de la partición.
+
+--- VARIABLES MÁS INFLUYENTES -----------------------------------------------
+      retraso_salida_min                  0.199
+      dia_semana                          0.152
+      n_incidentes_acumulados             0.112
+      experiencia_operador_meses          0.066
+      incidentes_viaje                    0.062
+      rendimiento_nominal_km_l            0.052
+      orden_parada                        0.046
+      es_fin_semana                       0.041
+      tiempo_estimado_min                 0.041
+      distancia_km                        0.039
+      distancia_total_ruta_km             0.038
+      mes                                 0.034
+
+==============================================================================
+  3 · QUÉ APORTA EL SEGUIMIENTO EN TIEMPO REAL
+==============================================================================
+  ESCENARIO               F1    RECALL   LECTURA OPERATIVA
+------------------------------------------------------------------------------
+  PLANEACION           0.580     0.666   riesgo estimado al programar la ruta
+  EN_RUTA              0.744     0.833   alerta con el viaje ya iniciado
+
+  Ganancia de F1 al seguir el viaje: +0.164
+  Interpretación: el retraso de salida y los incidentes ocurridos
+  son la información que más mejora la predicción. Justifica que el
+  sistema web capture esos eventos durante la operación, no al cierre.
+
+==============================================================================
+  4 · VERIFICACIONES AUTOMÁTICAS
+==============================================================================
+  [OK]    PLANEACION: supera al modelo base en F1     0.580 vs 0.000
+  [OK]    PLANEACION: ROC-AUC mejor que el azar       0.779
+  [OK]    PLANEACION: sin variables con fuga          16 variables verificadas
+  [OK]    EN_RUTA: supera al modelo base en F1        0.744 vs 0.000
+  [OK]    EN_RUTA: ROC-AUC mejor que el azar          0.922
+  [OK]    EN_RUTA: sin variables con fuga             19 variables verificadas
+  [OK]    EN_RUTA mejora sobre PLANEACION             más información, mejor predicción
+------------------------------------------------------------------------------
+  7/7 verificaciones correctas
+
+==============================================================================
+  5 · MODELOS GUARDADOS
+==============================================================================
+  PLANEACION  Random Forest           ml\modelos_entrenados\clasificacion_retraso_planeacion.joblib
+  EN_RUTA     Random Forest           ml\modelos_entrenados\clasificacion_retraso_en_ruta.joblib
+
+  Ficha de cada modelo registrada en la colección `modelos_ml`.
+
+==============================================================================
+  CLASIFICACIÓN TERMINADA.
+  Sigue: python -m ml.supervisado.regresion_retraso
+==============================================================================

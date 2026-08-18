@@ -1,0 +1,142 @@
+
+==============================================================================
+  SIG-LOG · ESTIMACIÓN DE LA MAGNITUD DEL RETRASO (PA-8)
+==============================================================================
+  Los datos son SIMULADOS (decisión C-02).
+
+  Dataset: 14,287 entregas de calidad OK
+  Retraso real: media 8.6 min · mediana 7.3 min · desviación 17.9 min
+
+==============================================================================
+  1 · ESCENARIO PLANEACION  (16 variables)
+==============================================================================
+  solo información disponible ANTES de que salga el vehículo
+  Entrenamiento 11,429 filas · Prueba 2,858 filas · semilla 42
+
+  MODELO                            RMSE       MAE        R2
+------------------------------------------------------------------------------
+  Base (media)                    18.071    12.372    -0.000
+  Regresión lineal                16.877    11.193     0.128
+  Árbol de decisión               15.806    10.061     0.235
+  Random Forest                   14.978     9.326     0.313
+
+  Mejor por RMSE: Random Forest
+      Se equivoca en promedio 9.3 minutos y explica el 31.3% de la variación del retraso.
+      Predecir siempre el promedio erraría 12.4 minutos: el modelo reduce el error 25%.
+
+--- DÓNDE SE EQUIVOCA (error por tramo de retraso real) ---------------------
+            entregas  error_medio_min  sesgo_medio_min
+tramo                                                 
+adelantada       831             10.3              9.3
+0-15            1213              5.8              2.3
+15-30            581              7.8             -6.0
+30-60            202             19.8            -19.5
+más de 60         31             84.5            -84.5
+
+  El sesgo negativo en los tramos altos indica que el modelo tiende
+  a QUEDARSE CORTO en los retrasos grandes: subestima lo excepcional.
+  Es el comportamiento esperado al promediar árboles, y la razón de
+  acompañar siempre la estimación con la alerta de la clasificación.
+
+--- VALIDACIÓN CRUZADA (5 particiones, RMSE) --------------------------------
+      RMSE medio 15.13 ± 0.52 min
+
+--- VARIABLES MÁS INFLUYENTES -----------------------------------------------
+      experiencia_operador_meses          0.278
+      dia_semana                          0.204
+      orden_parada                        0.109
+      mes                                 0.079
+      es_fin_semana                       0.059
+      rendimiento_nominal_km_l            0.056
+      tiempo_estimado_min                 0.038
+      distancia_total_ruta_km             0.033
+      velocidad_efectiva_kmh              0.032
+      distancia_km                        0.029
+      antiguedad_vehiculo_anios           0.020
+      franja_horaria_PICO_MATUTINO        0.015
+
+==============================================================================
+  2 · ESCENARIO EN_RUTA  (19 variables)
+==============================================================================
+  agrega lo ya ocurrido en el viaje (retraso de salida e incidentes)
+  Entrenamiento 11,429 filas · Prueba 2,858 filas · semilla 42
+
+  MODELO                            RMSE       MAE        R2
+------------------------------------------------------------------------------
+  Base (media)                    18.071    12.372    -0.000
+  Regresión lineal                12.794     8.645     0.499
+  Árbol de decisión               11.827     7.763     0.572
+  Random Forest                    9.344     6.211     0.733
+
+  Mejor por RMSE: Random Forest
+      Se equivoca en promedio 6.2 minutos y explica el 73.3% de la variación del retraso.
+      Predecir siempre el promedio erraría 12.4 minutos: el modelo reduce el error 50%.
+
+--- DÓNDE SE EQUIVOCA (error por tramo de retraso real) ---------------------
+            entregas  error_medio_min  sesgo_medio_min
+tramo                                                 
+adelantada       831              6.2              4.1
+0-15            1213              4.7             -0.0
+15-30            581              6.4             -3.5
+30-60            202             10.4             -4.0
+más de 60         31             34.9            -34.8
+
+  El sesgo negativo en los tramos altos indica que el modelo tiende
+  a QUEDARSE CORTO en los retrasos grandes: subestima lo excepcional.
+  Es el comportamiento esperado al promediar árboles, y la razón de
+  acompañar siempre la estimación con la alerta de la clasificación.
+
+--- VALIDACIÓN CRUZADA (5 particiones, RMSE) --------------------------------
+      RMSE medio 9.60 ± 0.34 min
+
+--- VARIABLES MÁS INFLUYENTES -----------------------------------------------
+      n_incidentes_acumulados             0.316
+      dia_semana                          0.135
+      retraso_salida_min                  0.135
+      orden_parada                        0.086
+      experiencia_operador_meses          0.056
+      es_fin_semana                       0.051
+      distancia_total_ruta_km             0.041
+      rendimiento_nominal_km_l            0.037
+      mes                                 0.030
+      velocidad_efectiva_kmh              0.021
+      tiempo_estimado_min                 0.017
+      antiguedad_vehiculo_anios           0.016
+
+==============================================================================
+  3 · COMPARACIÓN ENTRE ESCENARIOS
+==============================================================================
+  ESCENARIO             RMSE       MAE        R2   LECTURA
+------------------------------------------------------------------------------
+  PLANEACION           14.98      9.33     0.313   estimación al programar
+  EN_RUTA               9.34      6.21     0.733   estimación con el viaje en curso
+
+  Reducción del error típico al seguir el viaje: 5.63 min (38% menos)
+  Uso previsto: al programar, la estimación sirve para dimensionar
+  ventanas de entrega; en ruta, para avisar al cliente con un número.
+
+==============================================================================
+  4 · VERIFICACIONES AUTOMÁTICAS
+==============================================================================
+  [OK]    PLANEACION: RMSE mejor que la media           14.98 vs 18.07 min
+  [OK]    PLANEACION: R² positivo                       0.313
+  [OK]    PLANEACION: sin variables con fuga            16 variables verificadas
+  [OK]    EN_RUTA: RMSE mejor que la media              9.34 vs 18.07 min
+  [OK]    EN_RUTA: R² positivo                          0.733
+  [OK]    EN_RUTA: sin variables con fuga               19 variables verificadas
+  [OK]    EN_RUTA reduce el error frente a PLANEACION   9.34 vs 14.98 min
+------------------------------------------------------------------------------
+  7/7 verificaciones correctas
+
+==============================================================================
+  5 · MODELOS GUARDADOS
+==============================================================================
+  PLANEACION  Random Forest           ml\modelos_entrenados\regresion_retraso_planeacion.joblib
+  EN_RUTA     Random Forest           ml\modelos_entrenados\regresion_retraso_en_ruta.joblib
+
+  Ficha de cada modelo registrada en la colección `modelos_ml`.
+
+==============================================================================
+  PA-8 TERMINADA.
+  Siguiente actividad: ML no supervisado (clustering de rutas).
+==============================================================================

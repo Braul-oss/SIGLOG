@@ -24,6 +24,10 @@ env/
 Thumbs.db
 .DS_Store
 
+# Modelos entrenados: binarios regenerables con los scripts de ml/.
+# Su ficha (algoritmo y metricas) sí queda registrada en `modelos_ml`.
+ml/modelos_entrenados/*.joblib
+
 # Datos regenerables del ETL (se reconstruyen con etl/run_etl.py).
 # data/outputs/ SÍ se versiona: contiene gráficas y reportes usados
 # como evidencia académica.
