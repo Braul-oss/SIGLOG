@@ -166,7 +166,7 @@
       });
 
       if (dispersion) dispersion.destroy();
-      dispersion = new Chart(document.getElementById("g-dispersión"), {
+      dispersion = new Chart(document.getElementById("g-dispersion"), {
         type: "bubble",
         data: {
           datasets: [

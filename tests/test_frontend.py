@@ -612,6 +612,183 @@ def test_lo_que_no_se_puede_usar_no_se_manda_a_la_pagina():
 
 
 # ==========================================================================
+# GRÁFICAS
+# ==========================================================================
+def _scripts_de_pantalla() -> dict[str, list[Path]]:
+    """Qué archivo de JavaScript carga cada plantilla."""
+    plantillas = RAIZ / "frontend" / "templates"
+    pares: dict[str, list[Path]] = {}
+    for html in plantillas.glob("*.html"):
+        for script in re.findall(r"/static/js/([a-z]+)\.js",
+                                 html.read_text(encoding="utf-8")):
+            pares.setdefault(script, []).append(html)
+    return pares
+
+
+def test_toda_grafica_declara_su_tipo():
+    """
+    Chart.js exige un `type` en la raíz de la configuración.
+
+    Sin él lanza «"undefined" is not a registered controller» y el lienzo
+    queda en blanco. Es especialmente fácil de olvidar en las gráficas
+    mixtas, donde cada serie ya declara el suyo y parece que basta: no
+    basta, y el fallo no deja rastro salvo en la consola del navegador.
+    """
+    estaticos = RAIZ / "frontend" / "static" / "js"
+    problemas = []
+    for archivo in sorted(estaticos.glob("*.js")):
+        texto = archivo.read_text(encoding="utf-8")
+        for encontrado in re.finditer(r"new Chart\(", texto):
+            linea = texto[:encontrado.start()].count("\n") + 1
+            # La configuración empieza en la llave que sigue a la coma
+            resto = texto[encontrado.end():]
+            apertura = resto.find("{")
+            if apertura < 0:
+                problemas.append(f"{archivo.name}:{linea}: sin configuración")
+                continue
+            # Primera clave de primer nivel, saltando comentarios
+            cabeza = resto[apertura + 1:apertura + 700]
+            cabeza = re.sub(r"//[^\n]*", "", cabeza)
+            primera = re.search(r"\s*(\w+)\s*:", cabeza)
+            if primera is None or primera.group(1) not in ("type", "data",
+                                                           "options"):
+                problemas.append(
+                    f"{archivo.name}:{linea}: configuración inesperada")
+                continue
+            # `type` debe estar antes de `data` en el primer nivel
+            hasta_data = cabeza.split("data:")[0]
+            if "type:" not in hasta_data:
+                problemas.append(
+                    f"{archivo.name}:{linea}: la gráfica no declara `type` en "
+                    "la raíz; Chart.js no la dibujará")
+    assert not problemas, "\n".join(problemas)
+
+
+def test_cada_script_encuentra_los_elementos_que_busca():
+    """
+    Un `getElementById` que devuelve null rompe la pantalla en silencio.
+
+    Se comprueba contra la plantilla que carga cada script, más la base,
+    que aporta los elementos comunes.
+    """
+    estaticos = RAIZ / "frontend" / "static" / "js"
+    base = (RAIZ / "frontend" / "templates" / "base.html").read_text(
+        encoding="utf-8")
+
+    problemas = []
+    for script, plantillas in _scripts_de_pantalla().items():
+        js = (estaticos / f"{script}.js").read_text(encoding="utf-8")
+        buscados = sorted(set(re.findall(r'getElementById\("([^"]+)"\)', js)))
+        for plantilla in plantillas:
+            html = plantilla.read_text(encoding="utf-8") + base
+            for elemento in buscados:
+                if f'id="{elemento}"' not in html:
+                    problemas.append(
+                        f"{script}.js busca «{elemento}», que no existe en "
+                        f"{plantilla.name}")
+    assert not problemas, "\n".join(problemas)
+
+
+def test_los_identificadores_del_dom_son_ascii():
+    """
+    Un identificador con acento depende de que la página y el script se
+    interpreten con la misma codificación. Con doce lienzos en el sistema
+    no compensa el riesgo por un carácter.
+    """
+    malos = []
+    for carpeta, patron in ((RAIZ / "frontend" / "templates", "*.html"),
+                            (RAIZ / "frontend" / "static" / "js", "*.js")):
+        for archivo in sorted(carpeta.glob(patron)):
+            texto = archivo.read_text(encoding="utf-8")
+            for elemento in re.findall(r'id="([^"]+)"', texto):
+                if not elemento.isascii():
+                    malos.append(f"{archivo.name}: id=\"{elemento}\"")
+            for elemento in re.findall(r'getElementById\("([^"]+)"\)', texto):
+                if not elemento.isascii():
+                    malos.append(f"{archivo.name}: getElementById(\"{elemento}\")")
+    assert not malos, "\n".join(malos)
+
+
+def test_los_ejes_de_las_graficas_llevan_su_unidad():
+    """
+    Un eje sin unidad obliga a adivinar, y quien adivina se equivoca.
+
+    Se exige que cada gráfica con escalas rotule sus ejes. Las unidades
+    concretas —MXN, minutos, km, litros— se comprueban buscando que
+    aparezcan en los rótulos del sistema.
+    """
+    estaticos = RAIZ / "frontend" / "static" / "js"
+    unidades = ("(MXN)", "(minutos)", "(km)", "(litros)", "(%)")
+    sin_rotular = []
+    encontradas = set()
+
+    for archivo in sorted(estaticos.glob("*.js")):
+        texto = archivo.read_text(encoding="utf-8")
+        if "new Chart(" not in texto:
+            continue
+        for unidad in unidades:
+            if unidad in texto:
+                encontradas.add(unidad)
+        # Toda gráfica con `scales` debe rotular al menos un eje
+        for bloque in re.findall(r"scales:\s*\{(.{0,900}?)\n\s{8,}\}",
+                                 texto, re.S):
+            if "title:" not in bloque:
+                linea = texto[:texto.find(bloque)].count("\n") + 1
+                sin_rotular.append(f"{archivo.name}:{linea}: ejes sin rótulo")
+
+    assert not sin_rotular, "\n".join(sin_rotular)
+    assert len(encontradas) >= 4, (
+        f"solo se rotulan {sorted(encontradas)}; faltan unidades por declarar")
+
+
+def test_el_panel_lleva_a_las_demas_pantallas():
+    """
+    Un panel del que no se puede salir es un callejón sin salida.
+
+    Cada tarjeta resume algo que tiene su pantalla completa: las rutas
+    llevan a la analítica, los vehículos a la flotilla, la predicción a ML
+    y el mantenimiento a su módulo. Y la cabecera ofrece la navegación
+    entre las pantallas de análisis, tomada de `secciones`, que ya viene
+    filtrada por rol.
+    """
+    c = cliente_http()
+    entrar(c)
+    html = c.get("/panel").text
+
+    for destino in ("/flotilla", "/analitica", "/ml"):
+        assert f'href="{destino}"' in html, destino
+
+    # Los enlaces al detalle de cada tarjeta
+    assert html.count("sl-ver-mas") >= 4, (
+        "las tarjetas del panel no dicen dónde está el detalle")
+
+    # Y ninguno lleva a una pantalla que este rol no pueda abrir
+    for destino in set(re.findall(r'href="(/[a-z]+(?:/[a-z]+)?)"', html)):
+        if destino.startswith(("/static", "/salir", "/api")):
+            continue
+        assert c.get(destino).status_code == 200, (
+            f"el panel enlaza a {destino}, que responde "
+            f"{c.get(destino).status_code}")
+
+
+def test_el_panel_ofrece_los_tres_informes():
+    """
+    Los tres, con su descripción: «ejecutivo» y «operativo» no dicen por sí
+    solos cuál hace falta.
+    """
+    c = cliente_http()
+    entrar(c)
+    html = c.get("/panel").text
+    for tipo in ("ejecutivo", "operativo", "flotilla"):
+        assert f"{API}/reportes/{tipo}" in html, tipo
+    assert "Qué atender hoy" in html
+    # Y cada enlace responde de verdad, no da 404
+    for tipo in ("ejecutivo", "operativo", "flotilla"):
+        respuesta = c.get(f"{API}/reportes/{tipo}")
+        assert respuesta.status_code == 200, f"{tipo}: {respuesta.status_code}"
+
+
+# ==========================================================================
 # ROLES
 # ==========================================================================
 def test_el_analista_no_entra_a_usuarios():
@@ -772,6 +949,17 @@ if __name__ == "__main__":
         ("Un módulo inexistente da 404 con página",
          test_un_modulo_inexistente_da_404_con_pagina),
         ("Los estáticos se sirven", test_los_estaticos_se_sirven),
+        ("Toda gráfica declara su tipo", test_toda_grafica_declara_su_tipo),
+        ("Cada script encuentra los elementos que busca",
+         test_cada_script_encuentra_los_elementos_que_busca),
+        ("Los identificadores del DOM son ASCII",
+         test_los_identificadores_del_dom_son_ascii),
+        ("Los ejes de las gráficas llevan su unidad",
+         test_los_ejes_de_las_graficas_llevan_su_unidad),
+        ("El panel lleva a las demás pantallas",
+         test_el_panel_lleva_a_las_demas_pantallas),
+        ("El panel ofrece los tres informes",
+         test_el_panel_ofrece_los_tres_informes),
         ("El panel muestra los KPIs de analytics",
          test_el_panel_muestra_los_kpis_de_analytics),
         ("El catálogo coincide con el API",

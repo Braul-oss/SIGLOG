@@ -9,20 +9,47 @@
 {% endblock %}
 
 {% block acciones_cabecera %}
-  {# Se abren en una pestaña: el navegador los muestra y el usuario decide
-     si los guarda. Forzar la descarga obligaría a abrirlos desde el disco
-     solo para echarles un vistazo. #}
-  <a href="{{ prefijo_api }}/reportes/ejecutivo" target="_blank" rel="noopener"
-     class="btn btn-sm btn-primary">
-    <i class="bi bi-file-earmark-pdf"></i> Informe ejecutivo</a>
-  <a href="{{ prefijo_api }}/reportes/operativo" target="_blank" rel="noopener"
-     class="btn btn-sm btn-outline-primary">
-    <i class="bi bi-file-earmark-text"></i> Qué atender hoy</a>
-  <a href="/analitica" class="btn btn-sm btn-outline-secondary">
-    <i class="bi bi-bar-chart-line"></i> Rutas y retrasos</a>
+  {#
+    Navegación a las demás pantallas de análisis. Sale de `secciones`, que
+    ya viene filtrada por rol, así que nunca ofrece una puerta cerrada.
+    El panel se excluye: es donde estamos.
+  #}
+  {% for entrada in secciones if entrada.clave != 'panel' %}
+    <a href="{{ entrada.ruta }}" title="{{ entrada.descripcion }}"
+       class="btn btn-sm btn-outline-primary">
+      <i class="bi {{ entrada.icono }}"></i> {{ entrada.titulo }}</a>
+  {% endfor %}
+
+  {# Las descargas van agrupadas para no competir con la navegación. #}
+  <div class="dropdown">
+    <button class="btn btn-sm btn-primary dropdown-toggle" type="button"
+            data-bs-toggle="dropdown" aria-expanded="false">
+      <i class="bi bi-file-earmark-pdf"></i> Descargar informe
+    </button>
+    <ul class="dropdown-menu dropdown-menu-end sl-menu-informes">
+      <li><h6 class="dropdown-header">Se abren en una pestaña nueva</h6></li>
+      <li><a class="dropdown-item" target="_blank" rel="noopener"
+             href="{{ prefijo_api }}/reportes/ejecutivo">
+        <strong>Informe ejecutivo</strong>
+        <small>Cómo va la operación y por qué</small></a></li>
+      <li><a class="dropdown-item" target="_blank" rel="noopener"
+             href="{{ prefijo_api }}/reportes/operativo">
+        <strong>Qué atender hoy</strong>
+        <small>Unidades paradas, licencias e incidentes abiertos</small></a></li>
+      <li><a class="dropdown-item" target="_blank" rel="noopener"
+             href="{{ prefijo_api }}/reportes/flotilla">
+        <strong>Informe de flotilla</strong>
+        <small>Costos, consumo y desempeño por vehículo</small></a></li>
+    </ul>
+  </div>
 {% endblock %}
 
 {% block contenido %}
+{#
+  `menu` ya viene filtrado por rol. Si un módulo no está ahí, este usuario
+  no puede abrirlo, y enlazarlo sería ofrecerle una puerta cerrada.
+#}
+{% set modulos_visibles = menu | map(attribute='clave') | list %}
 
 {% if aviso %}
   <div class="alert alert-warning">
@@ -101,18 +128,29 @@
 
   <div class="sl-rejilla-2">
     <div class="sl-panel sl-panel-alerta" id="t-mantenimiento">
-      <h6><i class="bi bi-tools"></i> Unidades fuera de operación</h6>
+      <h6><i class="bi bi-tools"></i> Unidades fuera de operación
+        {% if 'mantenimientos' in modulos_visibles %}
+        <a href="/modulos/mantenimientos" class="sl-ver-mas">Ir a mantenimiento
+          <i class="bi bi-arrow-right-short"></i></a>
+        {% else %}
+        <a href="/flotilla" class="sl-ver-mas">Ver la flotilla
+          <i class="bi bi-arrow-right-short"></i></a>
+        {% endif %}</h6>
       <div class="sl-cargando">Cargando…</div>
     </div>
     <div class="sl-panel sl-panel-alerta" id="t-riesgo">
-      <h6><i class="bi bi-clock-history"></i> Entregas con riesgo de llegar tarde</h6>
+      <h6><i class="bi bi-clock-history"></i> Entregas con riesgo de llegar tarde
+        <a href="/ml" class="sl-ver-mas">Ver predicción
+          <i class="bi bi-arrow-right-short"></i></a></h6>
       <div class="sl-cargando">Cargando…</div>
     </div>
   </div>
 
   <div class="sl-rejilla-2">
     <div class="sl-panel">
-      <h6><i class="bi bi-signpost-split"></i> Rutas con mayor retraso</h6>
+      <h6><i class="bi bi-signpost-split"></i> Rutas con mayor retraso
+        <a href="/analitica" class="sl-ver-mas">Ver todas las gráficas
+          <i class="bi bi-arrow-right-short"></i></a></h6>
       <p class="sl-ayuda">Las que más se desvían de su hora prometida.
          Se excluyen las de menos de 50 entregas: el promedio de una muestra
          pequeña es ruido.</p>
@@ -120,7 +158,9 @@
       <p class="sl-lectura" id="l-rutas-retraso">Cargando…</p>
     </div>
     <div class="sl-panel">
-      <h6><i class="bi bi-truck-front"></i> Unidades de mayor costo</h6>
+      <h6><i class="bi bi-truck-front"></i> Unidades de mayor costo
+        <a href="/flotilla" class="sl-ver-mas">Ver la flotilla
+          <i class="bi bi-arrow-right-short"></i></a></h6>
       <p class="sl-ayuda">Combustible más mantenimiento. Una unidad cara no
          es un problema si trabaja mucho: el detalle está en Flotilla.</p>
       <canvas id="g-vehiculos-costo" height="200"></canvas>
@@ -138,7 +178,9 @@
 
   <div class="sl-rejilla-2">
     <div class="sl-panel">
-      <h6><i class="bi bi-bar-chart-steps"></i> Causas del retraso</h6>
+      <h6><i class="bi bi-bar-chart-steps"></i> Causas del retraso
+        <a href="/analitica" class="sl-ver-mas">Ver todas las gráficas
+          <i class="bi bi-arrow-right-short"></i></a></h6>
       <p class="sl-ayuda">Las barras rojas son las pocas causas que explican
          la mayor parte del problema. Atacarlas rinde más que repartir el
          esfuerzo entre todas.</p>
@@ -146,7 +188,9 @@
       <p class="sl-lectura" id="l-causas">Cargando…</p>
     </div>
     <div class="sl-panel">
-      <h6><i class="bi bi-diagram-3"></i> Tipos de ruta</h6>
+      <h6><i class="bi bi-diagram-3"></i> Tipos de ruta
+        <a href="/ml" class="sl-ver-mas">Ver predicción y grupos
+          <i class="bi bi-arrow-right-short"></i></a></h6>
       <p class="sl-ayuda">Las rutas agrupadas por comportamiento parecido.
          Cada grupo lleva la recomendación que le corresponde.</p>
       <div id="grupos-rutas" class="sl-cargando">Cargando…</div>

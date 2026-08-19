@@ -36,6 +36,11 @@
       document.getElementById("l-tendencia").textContent = r.datos.lectura;
 
       new Chart(document.getElementById("g-tendencia"), {
+        // Chart.js exige un tipo en la raíz aunque cada serie declare el
+        // suyo: sin él lanza «"undefined" is not a registered controller»
+        // y el lienzo queda en blanco. En una gráfica mixta el tipo de la
+        // raíz es el de la mayoría —barras— y la línea lo sobrescribe.
+        type: "bar",
         data: {
           labels: p.map(function (x) { return x.etiqueta; }),
           datasets: [
@@ -281,6 +286,11 @@
       document.getElementById("l-causas").textContent = r.datos.lectura;
 
       new Chart(document.getElementById("g-causas"), {
+        // Chart.js exige un tipo en la raíz aunque cada serie declare el
+        // suyo: sin él lanza «"undefined" is not a registered controller»
+        // y el lienzo queda en blanco. En una gráfica mixta el tipo de la
+        // raíz es el de la mayoría —barras— y la línea lo sobrescribe.
+        type: "bar",
         data: {
           labels: filas.map(function (f) {
             return f.causa.replace(/_/g, " ").toLowerCase();

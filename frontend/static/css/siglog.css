@@ -404,3 +404,31 @@ body {
 
 /* Las gráficas necesitan aire: un lienzo apretado solapa las etiquetas */
 .sl-panel canvas { margin-top: .4rem; }
+
+/* =========================================================================
+   NAVEGACIÓN DESDE EL PANEL
+   Cada tarjeta del panel es un resumen; el enlace dice dónde está el
+   detalle. Sin él, el panel parece un callejón sin salida.
+   ========================================================================= */
+.sl-ver-mas {
+  margin-left: auto; font-size: .74rem; font-weight: 500;
+  color: var(--sl-acento); text-decoration: none; white-space: nowrap;
+  display: inline-flex; align-items: center;
+}
+.sl-ver-mas:hover { text-decoration: underline; }
+.sl-ver-mas i { font-size: 1.05rem; margin-left: -.15rem; }
+
+/* Menú de descargas: cada informe con su descripción, porque «ejecutivo»
+   y «operativo» no dicen por sí solos cuál hace falta. */
+.sl-menu-informes { min-width: 320px; }
+.sl-menu-informes .dropdown-item { white-space: normal; padding: .5rem .9rem; }
+.sl-menu-informes .dropdown-item strong {
+  display: block; font-size: .86rem; font-weight: 600;
+}
+.sl-menu-informes .dropdown-item small {
+  display: block; font-size: .75rem; color: var(--sl-tinta-suave);
+  line-height: 1.35;
+}
+.sl-menu-informes .dropdown-header {
+  font-size: .7rem; text-transform: uppercase; letter-spacing: .05em;
+}
