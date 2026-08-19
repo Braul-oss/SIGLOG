@@ -81,6 +81,22 @@ python app.py                       # equivalente a la anterior
 El host, el puerto y la recarga automática se configuran en el `.env`
 (`API_HOST`, `API_PUERTO`, `API_RECARGA`).
 
+> **Comprueba que el arranque termina.** Con la recarga automática activada,
+> uvicorn reinicia al detectar un cambio, pero si ese reinicio falla se queda
+> sirviendo el código anterior **sin avisar**: las rutas nuevas responden 404
+> y las páginas parecen desactualizadas sin motivo. La consola debe volver a
+> mostrar `Application startup complete` después de cada recarga; si no lo
+> hace, detén el proceso y arráncalo de nuevo.
+>
+> Y antes de arrancar, comprueba que el puerto está libre: Windows permite
+> que varios procesos se enganchen al mismo puerto sin protestar, y entonces
+> las peticiones van a parar a cualquiera de ellos.
+>
+> ```bash
+> netstat -ano | findstr :8000
+> taskkill /PID <pid> /F
+> ```
+
 ### La interfaz web
 
 Con el servidor en marcha, la aplicación está en **<http://127.0.0.1:8000/>**.
@@ -280,6 +296,8 @@ Todos bajo el prefijo `/api/v1` (§12.2 del documento técnico).
 | GET | `/ml/clusters-rutas` | sesión | Grupos de rutas (K-Means sobre PCA) |
 | GET | `/ml/entregas-en-riesgo` | sesión | Pendientes ordenadas por riesgo |
 | POST | `/ml/predecir-retraso` | admin o despachador | Predicción para una entrega |
+| GET | `/reportes` | sesión | Qué informes hay y qué responde cada uno |
+| GET | `/reportes/{tipo}` | sesión | Descarga el informe en PDF |
 
 En el módulo de clientes el permiso **no es uniforme**: consultar lo puede
 hacer cualquier sesión —el despachador necesita ver clientes para registrar
@@ -548,6 +566,46 @@ sobre los mismos datos.
 
 ---
 
+## Informes en PDF
+
+Tres informes, cada uno para una pregunta y un destinatario distintos:
+
+| Informe | Para quién | Qué responde |
+|---|---|---|
+| **Ejecutivo** | Dirección | Cómo va la operación, si mejora o empeora, dónde están los problemas y qué los explica |
+| **Flotilla** | Coordinación | Qué vehículos cuestan más, consumen más, trabajan más, llegan tarde y requieren mantenimiento |
+| **Operativo** | Despacho | Qué atender **ahora**: unidades paradas, licencias vencidas, incidentes abiertos y entregas en riesgo |
+
+Se descargan desde el panel —menú *Descargar informe*— o desde la línea de
+comandos:
+
+```bash
+python -m reportes.generar                    # los tres, a data/outputs/
+python -m reportes.generar --tipo flotilla    # solo uno
+python -m reportes.generar --destino /ruta    # a otra carpeta
+```
+
+**Los dos caminos llaman a la misma función.** Si divergieran, el PDF que
+descarga un usuario dejaría de ser el que se archiva, y nadie sabría cuál es
+el bueno. `tests/test_reportes.py` compara los dos documentos.
+
+**Las gráficas se dibujan en memoria** llamando a `analytics/graficas.py`, no
+se leen los PNG de `data/outputs/`. Esos archivos son de la última vez que
+alguien ejecutó el dashboard; un informe que mezclara cifras frescas con
+gráficas viejas mentiría sin que nadie lo notara.
+
+**Cada página lleva la marca de datos simulados.** Un PDF se descarga, se
+reenvía y se imprime fuera del sistema, donde ya no hay una pantalla que
+avise; la página que acabe suelta debe seguir diciendo de dónde salió.
+
+**Ningún informe recalcula nada.** Los indicadores salen de `analytics.kpis`,
+el desempeño de la flotilla de `analitica.desempeno_vehiculos` y las alertas
+de los mismos servicios que las atienden en pantalla. Las pruebas extraen el
+texto del PDF y comprueban que las cifras coincidan con las que devuelve cada
+servicio.
+
+---
+
 ## Pruebas
 
 ```bash
@@ -566,7 +624,8 @@ python tests/test_combustible.py    # módulo combustible (20 pruebas)
 python tests/test_mantenimientos.py # módulo mantenimiento (21 pruebas)
 python tests/test_analitica.py      # endpoints de analítica (22 pruebas)
 python tests/test_ml.py             # endpoints de ML (15 pruebas)
-python tests/test_frontend.py       # interfaz web (25 pruebas)
+python tests/test_frontend.py       # interfaz web (34 pruebas)
+python tests/test_reportes.py       # informes en PDF (16 pruebas)
 
 # o con pytest
 pytest tests/ -v
@@ -589,6 +648,7 @@ SIGLOG/
 ├── etl/             Extracción, limpieza, transformación, enriquecimiento y carga
 ├── ml/              Modelos supervisados y no supervisados
 ├── analytics/       KPIs, gráficas y dashboard
+├── reportes/        Informes en PDF (ejecutivo, flotilla, operativo)
 ├── data/            raw · processed · outputs (reportes y gráficas)
 ├── docs/            Documento técnico base
 └── tests/           Pruebas y evidencias
@@ -624,6 +684,7 @@ Frontend → FastAPI → Service → analytics/ · ml/ → MongoDB → respuesta
 | Módulos del dominio: clientes, vehículos, operadores, rutas, viajes, entregas, incidentes, combustible, mantenimiento | Completo |
 | Endpoints de analítica y ML | Completo |
 | Interfaz web (Jinja2 + Bootstrap) | Completo |
-| Reportes PDF | Pendiente |
+| Reportes PDF | Completo |
+| Manual técnico y manual de usuario | Pendiente |
 
 La documentación de diseño está en `docs/SIG-LOG_Documento_Tecnico_Base.md`.

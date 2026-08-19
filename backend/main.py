@@ -290,9 +290,50 @@ app.include_router(vistas.router)
 # ==========================================================================
 # ARRANQUE
 # ==========================================================================
+def puerto_ocupado(host: str, puerto: int) -> bool:
+    """
+    Si ya hay algo escuchando en esa dirección.
+
+    Se comprueba **antes** de arrancar por dos razones. La primera es el
+    mensaje: al fallar el enlace, Windows devuelve
+    `[WinError 10013] An attempt was made to access a socket in a way
+    forbidden by its access permissions`, que suena a problema de permisos
+    y no dice lo único que hace falta saber — que el puerto está tomado.
+
+    La segunda es peor. En Windows, si el proceso que ocupa el puerto lo
+    abrió con `SO_REUSEADDR`, un segundo servidor **enlaza sin protestar**
+    y las peticiones se reparten entre ambos de forma impredecible: se
+    acaba depurando un sistema que responde con dos versiones distintas del
+    código según la petición.
+    """
+    import socket
+
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as prueba:
+        prueba.settimeout(0.6)
+        return prueba.connect_ex((host, puerto)) == 0
+
+
 def iniciar() -> None:
     """Levanta uvicorn con la configuración del .env."""
     import uvicorn
+
+    if puerto_ocupado(settings.API_HOST, settings.API_PUERTO):
+        direccion = f"{settings.API_HOST}:{settings.API_PUERTO}"
+        print("=" * 70)
+        print(f"  NO SE PUEDE ARRANCAR: el puerto {settings.API_PUERTO} ya "
+              "está ocupado")
+        print("=" * 70)
+        print(f"  Algo responde ya en http://{direccion}. Casi siempre es")
+        print("  otro SIG-LOG que quedó levantado de un arranque anterior.")
+        print()
+        print("  Para ver quién lo tiene y detenerlo:")
+        print(f"      netstat -ano | findstr :{settings.API_PUERTO}")
+        print("      taskkill /PID <pid> /F")
+        print()
+        print("  O arranca en otro puerto:")
+        print(f"      API_PUERTO=8001 python app.py")
+        print("=" * 70)
+        raise SystemExit(1)
 
     uvicorn.run(
         "backend.main:app",
