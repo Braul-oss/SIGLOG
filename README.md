@@ -508,12 +508,27 @@ python -m ml.no_supervisado.seleccion_k           # elección de k
 python -m ml.no_supervisado.kmeans_rutas          # agrupamiento de rutas
 python -m ml.no_supervisado.pca_rutas             # componentes y visualización
 
+# 3b · Operación abierta del día + predicción de riesgo en lote
+# Requiere los modelos del paso 3 ya entrenados en ml/modelos_guardados/.
+python -m database.seed.generar_pendientes
+
 # 4 · Indicadores y dashboard
 python -m analytics.kpis
 python -m analytics.dashboard
 ```
 
 Los reportes y las gráficas quedan en `data/outputs/`.
+
+El paso 3b merece una explicación. PA-2 simula el histórico **cerrado**: al
+terminar, toda entrega tiene hora real de llegada. Eso entrena los modelos,
+pero deja al sistema sin operación abierta, y `predecir_retraso()` solo acepta
+entregas PROGRAMADA o EN_RUTA (§15.4). Sin el paso 3b no hay nada que predecir
+y el panel «Entregas con riesgo de llegar tarde» aparece vacío —no por un
+fallo, sino porque no existe ninguna entrega pendiente—. `generar_pendientes`
+crea los viajes del día y del siguiente y ejecuta la predicción en lote, que
+es el «proceso programado» al que el servicio de ML delega ese trabajo.
+Volver a lanzarlo con `--limpiar` reemplaza la operación abierta anterior sin
+tocar el histórico.
 
 Análisis exploratorio, que se ejecuta aparte porque no forma parte del pipeline
 productivo:
